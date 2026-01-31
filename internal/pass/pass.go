@@ -71,36 +71,36 @@ func (p *Pass) Init(gpgIDs []string) error {
 // Insert adds or updates a secret (overwrites if exists)
 func (p *Pass) Insert(name, value string) error {
 	// Use insert with multiline and force to overwrite
-	_, err := p.runWithStdin(value, "insert", "--multiline", "--force", name)
+	_, err := p.runWithStdin(value, "insert", "--multiline", "--force", "--", name)
 	return err
 }
 
 // Show retrieves a secret value
 func (p *Pass) Show(name string) (string, error) {
-	return p.run("show", name)
+	return p.run("show", "--", name)
 }
 
 // Exists checks if a secret exists
 func (p *Pass) Exists(name string) bool {
-	_, err := p.run("show", name)
+	_, err := p.run("show", "--", name)
 	return err == nil
 }
 
 // Remove deletes a secret
 func (p *Pass) Remove(name string) error {
-	_, err := p.run("rm", "--force", name)
+	_, err := p.run("rm", "--force", "--", name)
 	return err
 }
 
 // Move renames a secret
 func (p *Pass) Move(oldName, newName string) error {
-	_, err := p.run("mv", "--force", oldName, newName)
+	_, err := p.run("mv", "--force", "--", oldName, newName)
 	return err
 }
 
 // Copy copies a secret
 func (p *Pass) Copy(srcName, dstName string) error {
-	_, err := p.run("cp", "--force", srcName, dstName)
+	_, err := p.run("cp", "--force", "--", srcName, dstName)
 	return err
 }
 
