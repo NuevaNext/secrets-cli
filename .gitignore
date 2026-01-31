@@ -1,5 +1,5 @@
 # Build artifacts
-secrets-cli
+/secrets-cli
 dist/
 
 # Test artifacts
