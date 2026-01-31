@@ -97,6 +97,7 @@ jobs:
             --latest
           
           echo "✅ Promoted $PRERELEASE_TAG to full release"
+          echo "release_tag=$PRERELEASE_TAG" >> $GITHUB_OUTPUT
 
       - name: Calculate new version (minor/major)
         if: inputs.release_type != 'patch'
@@ -112,6 +113,7 @@ jobs:
           fi
           
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "release_tag=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
       - name: Generate release notes (minor/major)
@@ -173,29 +175,36 @@ jobs:
           echo "✅ Created release $NEW_VERSION"
 
       - name: Set up Go
-        if: inputs.release_type != 'patch'
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
           cache: true
 
-      - name: Build binaries (minor/major)
-        if: inputs.release_type != 'patch'
+      - name: Determine release tag for build
+        id: build_version
         run: |
-          VERSION="${{ steps.version.outputs.new_version }}"
+          if [ "${{ inputs.release_type }}" = "patch" ]; then
+            echo "tag=${{ steps.info.outputs.prerelease_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ steps.version.outputs.new_version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build binaries
+        run: |
+          VERSION="${{ steps.build_version.outputs.tag }}"
           make build-all VERSION=$VERSION
 
-      - name: Upload release assets (minor/major)
-        if: inputs.release_type != 'patch'
+      - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          RELEASE_TAG="${{ steps.build_version.outputs.tag }}"
           
-          gh release upload "$NEW_VERSION" \
+          gh release upload "$RELEASE_TAG" \
             dist/secrets-cli-linux-amd64 \
             dist/secrets-cli-linux-arm64 \
             dist/secrets-cli-darwin-amd64 \
-            dist/secrets-cli-darwin-arm64
+            dist/secrets-cli-darwin-arm64 \
+            --clobber
           
-          echo "✅ Uploaded binaries to $NEW_VERSION"
+          echo "✅ Uploaded binaries to $RELEASE_TAG"
