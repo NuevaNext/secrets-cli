@@ -1,0 +1,201 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get release information
+        id: info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get all tags sorted by version
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          
+          # Parse version components
+          VERSION=${LATEST_TAG#v}
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+          
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+          echo "patch=$PATCH" >> $GITHUB_OUTPUT
+          
+          # Check if latest release is a pre-release
+          PRERELEASE_TAG=$(gh release list --limit 1 --json tagName,isPrerelease -q 'if .[0].isPrerelease then .[0].tagName else "" end')
+          echo "prerelease_tag=$PRERELEASE_TAG" >> $GITHUB_OUTPUT
+          
+          # Find the last minor/major release tag for changelog
+          if [ "${{ inputs.release_type }}" = "major" ]; then
+            # Find last major release (vX.0.0)
+            LAST_MAJOR="v$((MAJOR-1)).0.0"
+            if ! git rev-parse "$LAST_MAJOR" >/dev/null 2>&1; then
+              LAST_MAJOR=$(git rev-list --max-parents=0 HEAD)
+            fi
+            echo "changelog_since=$LAST_MAJOR" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.release_type }}" = "minor" ]; then
+            # Find last minor release (vX.Y.0 where Y < current minor)
+            LAST_MINOR="v${MAJOR}.$((MINOR-1)).0"
+            if ! git rev-parse "$LAST_MINOR" >/dev/null 2>&1; then
+              LAST_MINOR="v${MAJOR}.0.0"
+            fi
+            if ! git rev-parse "$LAST_MINOR" >/dev/null 2>&1; then
+              LAST_MINOR=$(git rev-list --max-parents=0 HEAD)
+            fi
+            echo "changelog_since=$LAST_MINOR" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Promote pre-release (patch)
+        if: inputs.release_type == 'patch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE_TAG="${{ steps.info.outputs.prerelease_tag }}"
+          
+          if [ -z "$PRERELEASE_TAG" ]; then
+            echo "❌ No pre-release found to promote"
+            exit 1
+          fi
+          
+          echo "Promoting $PRERELEASE_TAG to full release..."
+          
+          # Get current release info
+          RELEASE_INFO=$(gh release view "$PRERELEASE_TAG" --json name,body)
+          CURRENT_NAME=$(echo "$RELEASE_INFO" | jq -r '.name')
+          CURRENT_BODY=$(echo "$RELEASE_INFO" | jq -r '.body')
+          
+          # Remove "(pre-release)" from name
+          NEW_NAME=$(echo "$CURRENT_NAME" | sed 's/ (pre-release)$//')
+          
+          # Update release: remove prerelease flag, set as latest
+          gh release edit "$PRERELEASE_TAG" \
+            --title "$NEW_NAME" \
+            --prerelease=false \
+            --latest
+          
+          echo "✅ Promoted $PRERELEASE_TAG to full release"
+
+      - name: Calculate new version (minor/major)
+        if: inputs.release_type != 'patch'
+        id: version
+        run: |
+          MAJOR=${{ steps.info.outputs.major }}
+          MINOR=${{ steps.info.outputs.minor }}
+          
+          if [ "${{ inputs.release_type }}" = "major" ]; then
+            NEW_VERSION="v$((MAJOR + 1)).0.0"
+          else
+            NEW_VERSION="v${MAJOR}.$((MINOR + 1)).0"
+          fi
+          
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+
+      - name: Generate release notes (minor/major)
+        if: inputs.release_type != 'patch'
+        id: notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SINCE="${{ steps.info.outputs.changelog_since }}"
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          
+          echo "## What's Changed in $NEW_VERSION" > notes.md
+          echo "" >> notes.md
+          
+          # Get merged PRs since the last release
+          echo "### Pull Requests" >> notes.md
+          echo "" >> notes.md
+          
+          # List commits and extract PR references
+          git log ${SINCE}..HEAD --oneline --grep="Merge pull request" | while read line; do
+            PR_NUM=$(echo "$line" | grep -oP '#\d+' | head -1)
+            if [ -n "$PR_NUM" ]; then
+              PR_TITLE=$(gh pr view ${PR_NUM#\#} --json title -q '.title' 2>/dev/null || echo "")
+              if [ -n "$PR_TITLE" ]; then
+                echo "* $PR_TITLE ($PR_NUM)" >> notes.md
+              fi
+            fi
+          done
+          
+          # Also include direct commits
+          echo "" >> notes.md
+          echo "### Commits" >> notes.md
+          echo "" >> notes.md
+          git log ${SINCE}..HEAD --pretty=format:"* %s (%h)" --no-merges >> notes.md
+          
+          echo "" >> notes.md
+          echo "---" >> notes.md
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${SINCE}...${NEW_VERSION}" >> notes.md
+          
+          cat notes.md
+
+      - name: Create new release (minor/major)
+        if: inputs.release_type != 'patch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          
+          # Create tag
+          git tag "$NEW_VERSION"
+          git push origin "$NEW_VERSION"
+          
+          # Create release
+          gh release create "$NEW_VERSION" \
+            --title "$NEW_VERSION" \
+            --notes-file notes.md \
+            --latest
+          
+          echo "✅ Created release $NEW_VERSION"
+
+      - name: Set up Go
+        if: inputs.release_type != 'patch'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Build binaries (minor/major)
+        if: inputs.release_type != 'patch'
+        run: |
+          VERSION="${{ steps.version.outputs.new_version }}"
+          make build-all VERSION=$VERSION
+
+      - name: Upload release assets (minor/major)
+        if: inputs.release_type != 'patch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new_version }}"
+          
+          gh release upload "$NEW_VERSION" \
+            dist/secrets-cli-linux-amd64 \
+            dist/secrets-cli-linux-arm64 \
+            dist/secrets-cli-darwin-amd64 \
+            dist/secrets-cli-darwin-arm64
+          
+          echo "✅ Uploaded binaries to $NEW_VERSION"
