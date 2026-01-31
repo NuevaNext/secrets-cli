@@ -119,7 +119,7 @@ func runVaultList(cmd *cobra.Command, args []string) error {
 	email := GetUserEmail()
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	vaults, err := config.ListVaults(secretsDir)
@@ -154,9 +154,9 @@ func runVaultList(cmd *cobra.Command, args []string) error {
 		status := ""
 		if email != "" {
 			if hasAccess {
-				status = " ✓"
+				status = " " + green("✓")
 			} else {
-				status = " ✗"
+				status = " " + red("✗")
 			}
 		}
 
@@ -165,7 +165,7 @@ func runVaultList(cmd *cobra.Command, args []string) error {
 			desc = fmt.Sprintf(" - %s", vaultCfg.Description)
 		}
 
-		fmt.Printf("  %s%s%s\n", vault, status, desc)
+		fmt.Printf("  %s%s%s\n", bold(vault), status, desc)
 	}
 
 	return nil
@@ -177,7 +177,7 @@ func runVaultCreate(cmd *cobra.Command, args []string) error {
 	vaultName := args[0]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	if email == "" {
@@ -229,7 +229,7 @@ func runVaultCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize password store: %w", err)
 	}
 
-	fmt.Printf("✓ Created vault: %s\n", vaultName)
+	fmt.Printf("%s Created vault: %s\n", green("✓"), vaultName)
 	if vaultDescription != "" {
 		fmt.Printf("  Description: %s\n", vaultDescription)
 	}
@@ -292,7 +292,7 @@ func runVaultDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete vault: %w", err)
 	}
 
-	fmt.Printf("✓ Deleted vault: %s\n", vaultName)
+	fmt.Printf("%s Deleted vault: %s\n", green("✓"), vaultName)
 	return nil
 }
 
@@ -362,8 +362,8 @@ func runVaultAddMember(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to re-encrypt secrets: %w", err)
 	}
 
-	fmt.Printf("✓ Added %s to vault %s\n", memberEmail, vaultName)
-	fmt.Printf("✓ Re-encrypted %d secret(s)\n", countSecrets(storeDir))
+	fmt.Printf("%s Added %s to vault %s\n", green("✓"), memberEmail, vaultName)
+	fmt.Printf("%s Re-encrypted %d secret(s)\n", green("✓"), countSecrets(storeDir))
 
 	return nil
 }
@@ -431,8 +431,8 @@ func runVaultRemoveMember(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to re-encrypt secrets: %w", err)
 	}
 
-	fmt.Printf("✓ Removed %s from vault %s\n", memberEmail, vaultName)
-	fmt.Printf("✓ Re-encrypted %d secret(s)\n", countSecrets(storeDir))
+	fmt.Printf("%s Removed %s from vault %s\n", green("✓"), memberEmail, vaultName)
+	fmt.Printf("%s Re-encrypted %d secret(s)\n", green("✓"), countSecrets(storeDir))
 
 	return nil
 }

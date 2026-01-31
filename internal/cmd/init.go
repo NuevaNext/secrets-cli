@@ -82,13 +82,13 @@ func runInit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to export public key: %w", err)
 	}
 
-	fmt.Printf("✓ Initialized secrets store in %s\n", secretsDir)
-	fmt.Printf("✓ Exported your public key to %s\n", keyPath)
+	fmt.Printf("%s Initialized secrets store in %s\n", green("✓"), secretsDir)
+	fmt.Printf("%s Exported your public key to %s\n", green("✓"), keyPath)
 	fmt.Println()
-	fmt.Println("Next steps:")
-	fmt.Println("  1. Create a vault:  secrets-cli vault create <name>")
-	fmt.Println("  2. Add a secret:    secrets-cli set <vault> <secret>")
-	fmt.Println("  3. Commit to git:   git add .secrets && git commit")
+	fmt.Println(bold("Next steps:"))
+	fmt.Printf("  1. Create a vault:  %s\n", cyan("secrets-cli vault create <name>"))
+	fmt.Printf("  2. Add a secret:    %s\n", cyan("secrets-cli set <vault> <secret>"))
+	fmt.Printf("  3. Commit to git:   %s\n", cyan("git add .secrets && git commit"))
 
 	return nil
 }

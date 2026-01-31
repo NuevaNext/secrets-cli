@@ -54,7 +54,7 @@ func runExport(cmd *cobra.Command, args []string) error {
 	vaultName := args[0]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	// Check vault exists
@@ -125,7 +125,7 @@ func runSync(cmd *cobra.Command, args []string) error {
 	vaultName := args[0]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	// Check vault exists
@@ -164,7 +164,7 @@ func runSync(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to save vault config: %w", err)
 	}
 
-	fmt.Printf("✓ Synchronized vault: %s\n", vaultName)
+	fmt.Printf("%s Synchronized vault: %s\n", green("✓"), vaultName)
 	return nil
 }
 

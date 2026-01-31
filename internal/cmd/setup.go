@@ -36,7 +36,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 
 	// Check if secrets directory exists
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	// Require email
@@ -62,7 +62,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("your key (%s) is not in the store. Ask an admin to add it", email)
 	}
 
-	fmt.Printf("✓ Found your key: %s\n", keyFile)
+	fmt.Printf("%s Found your key: %s\n", green("✓"), keyFile)
 
 	// Import all keys
 	g := gpg.New(GetGPGBinary())
@@ -71,7 +71,7 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to import keys: %w", err)
 	}
 
-	fmt.Printf("✓ Imported %d key(s) to your GPG keyring\n", imported)
+	fmt.Printf("%s Imported %d key(s) to your GPG keyring\n", green("✓"), imported)
 
 	// List vaults and check access
 	vaults, err := config.ListVaults(secretsDir)
@@ -98,9 +98,9 @@ func runSetup(cmd *cobra.Command, args []string) error {
 			}
 
 			if hasAccess {
-				fmt.Printf("  ✓ %s (access granted)\n", vault)
+				fmt.Printf("  %s %s (access granted)\n", green("✓"), vault)
 			} else {
-				fmt.Printf("  ✗ %s (no access)\n", vault)
+				fmt.Printf("  %s %s (no access)\n", red("✗"), vault)
 			}
 		}
 	}

@@ -85,7 +85,7 @@ func runKeyList(cmd *cobra.Command, args []string) error {
 	secretsDir := GetSecretsDir()
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	keysDir := config.GetKeysDir(secretsDir)
@@ -116,7 +116,7 @@ func runKeyAdd(cmd *cobra.Command, args []string) error {
 	email := args[0]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	keysDir := config.GetKeysDir(secretsDir)
@@ -148,7 +148,7 @@ func runKeyAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Printf("✓ Added key for %s\n", email)
+	fmt.Printf("%s Added key for %s\n", green("✓"), email)
 	return nil
 }
 
@@ -157,7 +157,7 @@ func runKeyRemove(cmd *cobra.Command, args []string) error {
 	email := args[0]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	keysDir := config.GetKeysDir(secretsDir)
@@ -171,7 +171,7 @@ func runKeyRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to remove key: %w", err)
 	}
 
-	fmt.Printf("✓ Removed key for %s\n", email)
+	fmt.Printf("%s Removed key for %s\n", green("✓"), email)
 	return nil
 }
 
@@ -179,7 +179,7 @@ func runKeyImport(cmd *cobra.Command, args []string) error {
 	secretsDir := GetSecretsDir()
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	keysDir := config.GetKeysDir(secretsDir)
@@ -190,6 +190,6 @@ func runKeyImport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to import keys: %w", err)
 	}
 
-	fmt.Printf("✓ Imported %d key(s) to GPG keyring\n", imported)
+	fmt.Printf("%s Imported %d key(s) to GPG keyring\n", green("✓"), imported)
 	return nil
 }

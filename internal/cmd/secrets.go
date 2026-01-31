@@ -118,7 +118,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	vaultName := args[0]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	// Check vault exists
@@ -167,7 +167,7 @@ func runGet(cmd *cobra.Command, args []string) error {
 	secretName := args[1]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	// Check vault exists
@@ -205,7 +205,7 @@ func runSet(cmd *cobra.Command, args []string) error {
 	secretName := args[1]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	// Check vault exists
@@ -249,7 +249,7 @@ func runSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to set secret: %w", err)
 	}
 
-	fmt.Printf("✓ Set secret: %s/%s\n", vaultName, secretName)
+	fmt.Printf("%s Set secret: %s/%s\n", green("✓"), vaultName, secretName)
 	return nil
 }
 
@@ -260,7 +260,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	secretName := args[1]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	// Check vault exists
@@ -286,7 +286,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete secret: %w", err)
 	}
 
-	fmt.Printf("✓ Deleted secret: %s/%s\n", vaultName, secretName)
+	fmt.Printf("%s Deleted secret: %s/%s\n", green("✓"), vaultName, secretName)
 	return nil
 }
 
@@ -298,7 +298,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 	newName := args[2]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	// Check vault exists
@@ -324,7 +324,7 @@ func runRename(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to rename secret: %w", err)
 	}
 
-	fmt.Printf("✓ Renamed secret: %s/%s -> %s/%s\n", vaultName, oldName, vaultName, newName)
+	fmt.Printf("%s Renamed secret: %s/%s -> %s/%s\n", green("✓"), vaultName, oldName, vaultName, newName)
 	return nil
 }
 
@@ -336,7 +336,7 @@ func runCopy(cmd *cobra.Command, args []string) error {
 	dstVault := args[2]
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
-		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
+		return fmt.Errorf("%s Secrets directory not found: %s. Run 'secrets-cli init' first", red("✗"), secretsDir)
 	}
 
 	// Check source vault exists and access
@@ -385,6 +385,6 @@ func runCopy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to copy secret to destination: %w", err)
 	}
 
-	fmt.Printf("✓ Copied secret: %s/%s -> %s/%s\n", srcVault, secretName, dstVault, dstSecretName)
+	fmt.Printf("%s Copied secret: %s/%s -> %s/%s\n", green("✓"), srcVault, secretName, dstVault, dstSecretName)
 	return nil
 }

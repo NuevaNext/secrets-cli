@@ -1,0 +1,3 @@
+## 2026-01-31 - [Colorized CLI Output Pattern]
+**Learning:** Adding colors to a CLI tool significantly improves readability and scanability, especially for status indicators like success and failure. However, in Go, it is better to handle UI formatting at the presentation layer rather than including ANSI codes directly in error objects. Also, TTY checks should ideally verify the specific output stream (Stdout vs Stderr) being used.
+**Action:** Use a consistent color utility that respects NO_COLOR and TTY status. In future Go projects, separate error logic from UI formatting to keep error objects clean for logging.

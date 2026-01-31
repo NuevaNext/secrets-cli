@@ -151,3 +151,36 @@ func GetGPGBinary() string {
 func IsVerbose() bool {
 	return verbose
 }
+
+// ANSI color codes
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorCyan   = "\033[36m"
+	colorBold   = "\033[1m"
+)
+
+// colorize wraps a string with ANSI color codes if output is a terminal and NO_COLOR is not set
+func colorize(s, color string) string {
+	if os.Getenv("NO_COLOR") != "" {
+		return s
+	}
+
+	// Check if Stdout is a TTY
+	if fileInfo, err := os.Stdout.Stat(); err == nil {
+		if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+			return s
+		}
+	} else {
+		return s
+	}
+
+	return color + s + colorReset
+}
+
+func green(s string) string { return colorize(s, colorGreen) }
+func red(s string) string   { return colorize(s, colorRed) }
+func cyan(s string) string  { return colorize(s, colorCyan) }
+func bold(s string) string  { return colorize(s, colorBold) }
