@@ -20,11 +20,19 @@ IMAGE_NAME="secret-cli-tests"
 CONTAINER_NAME="secret-cli-test-run"
 
 # Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+if [[ -n "${NO_COLOR:-}" ]]; then
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    NC=''
+else
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[0;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m'
+fi
 
 # =============================================================================
 # Functions
