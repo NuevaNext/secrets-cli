@@ -1,0 +1,3 @@
+## 2026-02-01 - Colorized CLI Status Icons
+**Learning:** For Go-based CLI tools, colorizing status icons (✓/✗) significantly improves scannability. To maintain a professional experience, it is critical to implement TTY detection and respect the `NO_COLOR` standard to avoid polluting logs or non-interactive pipes with ANSI escape codes.
+**Action:** Always implement a safe color utility that checks `os.Stdout.Stat()` and `os.Getenv("NO_COLOR")` before applying ANSI codes. Use empty-string success/failure helpers (e.g., `success("")`) to provide colorized status icons in tabular output without repeating the status text.

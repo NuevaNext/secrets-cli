@@ -154,9 +154,9 @@ func runVaultList(cmd *cobra.Command, args []string) error {
 		status := ""
 		if email != "" {
 			if hasAccess {
-				status = " ✓"
+				status = " " + success("")
 			} else {
-				status = " ✗"
+				status = " " + failure("")
 			}
 		}
 

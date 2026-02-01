@@ -151,3 +151,20 @@ func GetGPGBinary() string {
 func IsVerbose() bool {
 	return verbose
 }
+
+// color wraps text in ANSI color codes if stdout is a TTY and NO_COLOR is not set
+func color(s, c string) string {
+	if os.Getenv("NO_COLOR") != "" {
+		return s
+	}
+	if fi, err := os.Stdout.Stat(); err == nil && (fi.Mode()&os.ModeCharDevice) != 0 {
+		return fmt.Sprintf("\033[%sm%s\033[0m", c, s)
+	}
+	return s
+}
+
+// success returns a green message with a checkmark
+func success(s string) string { return color("✓ "+s, "32") }
+
+// failure returns a red message with a cross
+func failure(s string) string { return color("✗ "+s, "31") }
