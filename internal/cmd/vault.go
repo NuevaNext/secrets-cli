@@ -176,6 +176,10 @@ func runVaultCreate(cmd *cobra.Command, args []string) error {
 	email := GetUserEmail()
 	vaultName := args[0]
 
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
 	}

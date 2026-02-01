@@ -151,3 +151,15 @@ func GetGPGBinary() string {
 func IsVerbose() bool {
 	return verbose
 }
+
+// validateName ensures a name is safe to use in file paths and command arguments
+func validateName(name string) error {
+	if name == "" {
+		return fmt.Errorf("name cannot be empty")
+	}
+	// Prevent path traversal and argument injection
+	if strings.Contains(name, "..") || strings.ContainsAny(name, "/\\") || strings.HasPrefix(name, "-") {
+		return fmt.Errorf("invalid name: %s (contains illegal characters or path traversal)", name)
+	}
+	return nil
+}
