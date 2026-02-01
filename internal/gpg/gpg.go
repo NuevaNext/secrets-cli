@@ -47,7 +47,7 @@ func (g *GPG) run(args ...string) (string, error) {
 
 // ExportPublicKey exports a public key for the given email
 func (g *GPG) ExportPublicKey(email string) ([]byte, error) {
-	cmd := exec.Command(g.Binary, "--armor", "--export", email)
+	cmd := exec.Command(g.Binary, "--armor", "--export", "--", email)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -108,7 +108,7 @@ func (g *GPG) ImportKeyFromDir(keysDir string) (int, error) {
 
 // GetKeyID returns the key ID for an email address
 func (g *GPG) GetKeyID(email string) (string, error) {
-	output, err := g.run("--list-keys", "--keyid-format", "long", email)
+	output, err := g.run("--list-keys", "--keyid-format", "long", "--", email)
 	if err != nil {
 		return "", fmt.Errorf("no key found for %s", email)
 	}
@@ -133,7 +133,7 @@ func (g *GPG) GetKeyID(email string) (string, error) {
 
 // GetFingerprint returns the fingerprint for an email address
 func (g *GPG) GetFingerprint(email string) (string, error) {
-	output, err := g.run("--fingerprint", email)
+	output, err := g.run("--fingerprint", "--", email)
 	if err != nil {
 		return "", err
 	}
@@ -157,7 +157,7 @@ func (g *GPG) GetFingerprint(email string) (string, error) {
 
 // KeyExists checks if a key exists for the given email
 func (g *GPG) KeyExists(email string) bool {
-	_, err := g.run("--list-keys", email)
+	_, err := g.run("--list-keys", "--", email)
 	return err == nil
 }
 
