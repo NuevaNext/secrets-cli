@@ -63,7 +63,7 @@ func (p *Pass) runWithStdin(input string, args ...string) (string, error) {
 
 // Init initializes the password store with GPG IDs
 func (p *Pass) Init(gpgIDs []string) error {
-	args := append([]string{"init"}, gpgIDs...)
+	args := append([]string{"init", "--"}, gpgIDs...)
 	_, err := p.run(args...)
 	return err
 }
@@ -162,7 +162,7 @@ func (p *Pass) ReInit(gpgIDs []string) error {
 	}
 
 	// Re-init to re-encrypt all secrets
-	args := append([]string{"init"}, gpgIDs...)
+	args := append([]string{"init", "--"}, gpgIDs...)
 	_, err := p.run(args...)
 	return err
 }
