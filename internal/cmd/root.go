@@ -172,6 +172,27 @@ func IsVerbose() bool {
 	return verbose
 }
 
+// color returns the string with ANSI color codes if stdout is a TTY and NO_COLOR is not set
+func color(s, c string) string {
+	if os.Getenv("NO_COLOR") != "" {
+		return s
+	}
+	if fi, err := os.Stdout.Stat(); err == nil && (fi.Mode()&os.ModeCharDevice) != 0 {
+		return fmt.Sprintf("\033[%sm%s\033[0m", c, s)
+	}
+	return s
+}
+
+// success returns a green string (for ✓ and success messages)
+func success(s string) string {
+	return color(s, "32")
+}
+
+// bold returns a bold string
+func bold(s string) string {
+	return color(s, "1")
+}
+
 // validateName ensures a name is safe to use in file paths and command arguments
 func validateName(name string) error {
 	if name == "" {
