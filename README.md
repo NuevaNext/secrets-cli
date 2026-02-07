@@ -116,7 +116,6 @@ secrets-cli export dev --format json
 # .envrc
 export DATABASE_PASSWORD="$(secrets-cli get dev database/password)"
 export API_KEY="$(secrets-cli get dev api/key)"
-export DATABASE_URL="$(secrets-cli get dev database/url)"
 ```
 
 3. Allow the file:
