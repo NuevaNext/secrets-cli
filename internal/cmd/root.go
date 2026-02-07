@@ -89,14 +89,13 @@ func GetSecretsDir() string {
 	// Try to find git root for proper path resolution
 	gitRoot, err := FindGitRoot()
 
-	// Determine the base secrets directory name/path
 	var baseSecretsDir string
-	if secretsDir != "" {
+	if rootCmd.Flags().Changed("secrets-dir") {
 		baseSecretsDir = secretsDir
 	} else if envDir := os.Getenv("SECRETS_DIR"); envDir != "" {
 		baseSecretsDir = envDir
 	} else {
-		baseSecretsDir = ".secrets"
+		baseSecretsDir = secretsDir // Fallback to default from flag
 	}
 
 	// If it's an absolute path, use it as-is
