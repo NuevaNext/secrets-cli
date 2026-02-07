@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,7 +41,10 @@ var ErrNotGitRepository = fmt.Errorf("not inside a git repository")
 func RequireGitRepository() (string, error) {
 	gitRoot, err := FindGitRoot()
 	if err != nil {
-		return "", fmt.Errorf("secrets-cli requires a Git repository to ensure correct preservation of secrets across your project.\n\nPlease run 'git init' first, or navigate to a directory within an existing Git repository")
+		if errors.Is(err, ErrNotGitRepository) {
+			return "", fmt.Errorf("secrets-cli requires a Git repository to ensure correct preservation of secrets across your project.\n\nPlease run 'git init' first, or navigate to a directory within an existing Git repository")
+		}
+		return "", err
 	}
 	return gitRoot, nil
 }
