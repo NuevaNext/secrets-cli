@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -81,15 +82,35 @@ func init() {
 	})
 }
 
-// GetSecretsDir returns the secrets directory path
+// GetSecretsDir returns the secrets directory path.
+// If inside a git repository, the path is resolved relative to the git root.
+// This ensures the tool works correctly from any subdirectory within the project.
 func GetSecretsDir() string {
-	if secretsDir == "" {
-		if envDir := os.Getenv("SECRETS_DIR"); envDir != "" {
-			return envDir
-		}
-		return ".secrets"
+	// Try to find git root for proper path resolution
+	gitRoot, err := FindGitRoot()
+
+	// Determine the base secrets directory name/path
+	var baseSecretsDir string
+	if secretsDir != "" {
+		baseSecretsDir = secretsDir
+	} else if envDir := os.Getenv("SECRETS_DIR"); envDir != "" {
+		baseSecretsDir = envDir
+	} else {
+		baseSecretsDir = ".secrets"
 	}
-	return secretsDir
+
+	// If it's an absolute path, use it as-is
+	if filepath.IsAbs(baseSecretsDir) {
+		return baseSecretsDir
+	}
+
+	// If we're in a git repository, resolve relative to git root
+	if err == nil {
+		return filepath.Join(gitRoot, baseSecretsDir)
+	}
+
+	// Fall back to relative path from current directory
+	return baseSecretsDir
 }
 
 // GetUserEmail returns the user email, auto-detecting if not explicitly set

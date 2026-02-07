@@ -47,7 +47,12 @@ setup_test_environment() {
     mkdir -p "$TEST_DIR"
     cd "$TEST_DIR"
     
-    test_log "Test directory: $TEST_DIR"
+    # Initialize git repository (required by secrets-cli)
+    git init --quiet
+    git config user.email "test@test.local"
+    git config user.name "Test User"
+    
+    test_log "Test directory: $TEST_DIR (git initialized)"
 }
 
 generate_gpg_key() {
@@ -156,6 +161,23 @@ run_all_tests() {
 # =============================================================================
 # Tests: Initialization
 # =============================================================================
+
+test_init_requires_git_repository() {
+    # Create a non-git directory
+    local no_git_dir="${WORKSPACE}/no-git-test"
+    rm -rf "$no_git_dir"
+    mkdir -p "$no_git_dir"
+    cd "$no_git_dir"
+    
+    assert_failure "$SECRET_CLI init --email $ALICE_EMAIL" || return 1
+    assert_output_contains "Git repository" || return 1
+    
+    # Cleanup and return to test dir
+    cd "$TEST_DIR"
+    rm -rf "$no_git_dir"
+    
+    return 0
+}
 
 test_init_creates_structure() {
     cd "$TEST_DIR"
@@ -348,6 +370,27 @@ test_secret_get_nonexistent_fails() {
     
     assert_failure "$SECRET_CLI --email $ALICE_EMAIL get dev nonexistent/secret" || return 1
     assert_output_contains "not found" || return 1
+    
+    return 0
+}
+
+test_commands_work_from_subdirectory() {
+    cd "$TEST_DIR"
+    
+    # Create a subdirectory
+    mkdir -p "subdir/nested"
+    cd "subdir/nested"
+    
+    # Commands should still work, finding .secrets from git root
+    assert_success "$SECRET_CLI --email $ALICE_EMAIL vault list" || return 1
+    assert_output_contains "dev" || return 1
+    
+    # Reading secrets should also work
+    assert_success "$SECRET_CLI --email $ALICE_EMAIL get dev database/password" || return 1
+    assert_output_equals "my-secret-password-123" || return 1
+    
+    # Return to test dir
+    cd "$TEST_DIR"
     
     return 0
 }
@@ -551,6 +594,8 @@ test_setup_imports_keys() {
 
 register_tests() {
     # Initialization
+    register_test "init_requires_git_repository" test_init_requires_git_repository \
+        "Require git repository for init command"
     register_test "init_creates_structure" test_init_creates_structure \
         "Initialize .secrets dir, config, and export user's GPG key"
     register_test "init_fails_if_already_initialized" test_init_fails_if_already_initialized \
@@ -591,6 +636,8 @@ register_tests() {
         "Delete secret with --force flag"
     register_test "secret_get_nonexistent_fails" test_secret_get_nonexistent_fails \
         "Error on accessing non-existent secret"
+    register_test "commands_work_from_subdirectory" test_commands_work_from_subdirectory \
+        "Commands work from nested subdirectories"
     
     # Key Management
     register_test "key_list" test_key_list \
