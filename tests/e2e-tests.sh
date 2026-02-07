@@ -395,6 +395,78 @@ test_commands_work_from_subdirectory() {
     return 0
 }
 
+test_direnv_integration_pattern() {
+    cd "$TEST_DIR"
+    
+    # Real direnv integration test
+    # Creates an .envrc that loads secrets via secrets-cli, then uses
+    # direnv exec to verify env vars are correctly loaded
+    
+    # Ensure secrets store and vault exist (makes test self-contained)
+    if [[ ! -d "$TEST_DIR/.secrets" ]]; then
+        $SECRET_CLI init --email "$ALICE_EMAIL" >/dev/null 2>&1
+    fi
+    $SECRET_CLI --email "$ALICE_EMAIL" vault create direnv-test >/dev/null 2>&1 || true
+    echo "direnv-db-pass" | $SECRET_CLI --email $ALICE_EMAIL set direnv-test db_password >/dev/null 2>&1
+    echo "direnv-api-key" | $SECRET_CLI --email $ALICE_EMAIL set direnv-test api_key >/dev/null 2>&1
+    
+    # Create .envrc with the documented pattern (no --email, auto-detect from git config)
+    cat > .envrc <<EOF
+export DATABASE_PASSWORD="\$($SECRET_CLI get direnv-test db_password)"
+export API_KEY="\$($SECRET_CLI get direnv-test api_key)"
+EOF
+    
+    # Allow the .envrc (required by direnv for security)
+    local allow_output
+    allow_output=$(direnv allow . 2>&1)
+    if [[ $? -ne 0 ]]; then
+        test_fail "direnv allow success" "failed: $allow_output"
+        return 1
+    fi
+    
+    # Use direnv exec to load the .envrc and check env vars are set
+    local result
+    local direnv_stderr
+    direnv_stderr=$(mktemp)
+    
+    result=$(direnv exec . bash -c 'echo "$DATABASE_PASSWORD"' 2>"$direnv_stderr")
+    if [[ "$result" != "direnv-db-pass" ]]; then
+        test_fail "direnv-db-pass" "$result" "DATABASE_PASSWORD not loaded by direnv. stderr: $(cat "$direnv_stderr")"
+        rm -f "$direnv_stderr" .envrc
+        return 1
+    fi
+    
+    result=$(direnv exec . bash -c 'echo "$API_KEY"' 2>"$direnv_stderr")
+    if [[ "$result" != "direnv-api-key" ]]; then
+        test_fail "direnv-api-key" "$result" "API_KEY not loaded by direnv. stderr: $(cat "$direnv_stderr")"
+        rm -f "$direnv_stderr" .envrc
+        return 1
+    fi
+    
+    # Verify env vars are NOT set outside the direnv context
+    if [[ -n "${DATABASE_PASSWORD:-}" ]]; then
+        test_fail "DATABASE_PASSWORD unset outside direnv" "DATABASE_PASSWORD is set: $DATABASE_PASSWORD"
+        rm -f "$direnv_stderr" .envrc
+        return 1
+    fi
+    
+    # Test direnv also works from a subdirectory (inherits parent .envrc)
+    mkdir -p "app/src"
+    result=$(direnv exec ./app/src bash -c 'echo "$DATABASE_PASSWORD"' 2>"$direnv_stderr")
+    if [[ "$result" != "direnv-db-pass" ]]; then
+        test_fail "direnv-db-pass" "$result" "direnv not loading secrets from subdirectory. stderr: $(cat "$direnv_stderr")"
+        rm -f "$direnv_stderr" .envrc
+        rm -rf app
+        return 1
+    fi
+    
+    # Cleanup
+    rm -f "$direnv_stderr" .envrc
+    rm -rf app
+    
+    return 0
+}
+
 # =============================================================================
 # Tests: Key Management
 # =============================================================================
@@ -638,6 +710,8 @@ register_tests() {
         "Error on accessing non-existent secret"
     register_test "commands_work_from_subdirectory" test_commands_work_from_subdirectory \
         "Commands work from nested subdirectories"
+    register_test "direnv_integration_pattern" test_direnv_integration_pattern \
+        "direnv .envrc pattern: get secrets without --email via command substitution"
     
     # Key Management
     register_test "key_list" test_key_list \
