@@ -20,6 +20,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     pass \
+    git \
     bash \
     coreutils \
     findutils \
