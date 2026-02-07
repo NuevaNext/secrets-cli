@@ -35,6 +35,15 @@ func init() {
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
+	// Require git repository for proper secrets preservation
+	gitRoot, err := RequireGitRepository()
+	if err != nil {
+		return err
+	}
+	if IsVerbose() {
+		fmt.Printf("Git repository root: %s\n", gitRoot)
+	}
+
 	secretsDir := GetSecretsDir()
 	email := GetUserEmail()
 
