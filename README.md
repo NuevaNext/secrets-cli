@@ -103,6 +103,32 @@ secrets-cli export dev --format dotenv > .env
 secrets-cli export dev --format json
 ```
 
+## direnv Integration
+
+[direnv](https://direnv.net/) can automatically load secrets as environment variables when you `cd` into your project, and unload them when you leave.
+
+### Setup
+
+1. [Install direnv](https://direnv.net/docs/installation.html) and add the shell hook to your profile
+2. Create an `.envrc` file in your project root:
+
+```bash
+# .envrc
+export DATABASE_PASSWORD="$(secrets-cli get dev database/password)"
+export API_KEY="$(secrets-cli get dev api/key)"
+export DATABASE_URL="$(secrets-cli get dev database/url)"
+```
+
+3. Allow the file:
+
+```bash
+direnv allow
+```
+
+From now on, secrets are loaded automatically when you enter the project directory and unloaded when you leave. No `--email` flag is needed — secrets-cli auto-detects your identity from `git config user.email`.
+
+> **Tip:** Add `.envrc` to `.gitignore` so each team member can choose which secrets to load.
+
 ## Commands
 
 | Command | Description |
