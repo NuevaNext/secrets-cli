@@ -49,7 +49,7 @@ setup_test_environment() {
     
     # Initialize git repository (required by secrets-cli)
     git init --quiet
-    git config user.email "test@test.local"
+    git config user.email "$ALICE_EMAIL"
     git config user.name "Test User"
     
     test_log "Test directory: $TEST_DIR (git initialized)"
