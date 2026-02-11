@@ -142,6 +142,7 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	if len(secrets) == 0 {
 		fmt.Printf("No secrets in vault: %s\n", vaultName)
+		fmt.Printf("Add your first secret with: secrets-cli set %s <name> <value>\n", vaultName)
 		return nil
 	}
 
@@ -225,6 +226,9 @@ func runSet(cmd *cobra.Command, args []string) error {
 		value = args[2]
 	} else {
 		// Read from stdin
+		if isTerminal(os.Stdin) {
+			fmt.Print("Enter secret value: ")
+		}
 		reader := bufio.NewReader(os.Stdin)
 		data, err := reader.ReadString('\n')
 		if err != nil && err.Error() != "EOF" {
