@@ -494,6 +494,48 @@ test_fail "expected" "actual"         # Manual failure with message
 test_log "message"                    # Log message (verbose mode)
 ```
 
+## PR Review Process
+
+### Responding to Review Comments
+
+**IMPORTANT**: When a PR receives review comments, you MUST reply to EVERY comment, acknowledging it and explaining what was done.
+
+**For each review comment:**
+
+✅ **If fixed:**
+```
+✅ **Fixed** - [Brief explanation of what was done]
+```
+
+ℹ️ **If acknowledged but implemented differently:**
+```
+✅ **Acknowledged** - [Explanation of the alternative approach and why]
+```
+
+❌ **If not applicable:**
+```
+ℹ️ **Not applicable** - [Clear explanation of why this doesn't apply]
+```
+
+### Why This Matters
+
+- Shows respect for reviewer's time
+- Creates a clear audit trail of decisions
+- Prevents comments from being forgotten
+- Helps future reviewers understand the discussion
+
+### Example Workflow
+
+```bash
+# Get all review comments
+gh api repos/OWNER/REPO/pulls/PR_NUMBER/comments | jq -r '.[] | "ID: \(.id)\nBody: \(.body)\n---"'
+
+# Reply to each comment
+gh api repos/OWNER/REPO/pulls/PR_NUMBER/comments/COMMENT_ID/replies \
+  -X POST \
+  -f body="✅ **Fixed** - Implemented regex parsing as suggested."
+```
+
 ## Summary
 
 **Golden Rule**: If you fix a bug, write a test that would have caught it.
@@ -503,3 +545,5 @@ test_log "message"                    # Log message (verbose mode)
 **Coverage**: Test edge cases, especially untrusted keys and multi-user scenarios.
 
 **CI/CD**: All tests run on PRs automatically. No exceptions.
+
+**PR Reviews**: Reply to ALL review comments, acknowledging what was done.
