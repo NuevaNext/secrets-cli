@@ -204,95 +204,92 @@ func (p *Pass) ReInit(gpgIDs []string) error {
 
 // VerifyEncryption checks if a secret is encrypted for all expected GPG IDs
 func (p *Pass) VerifyEncryption(secretName string, expectedGPGIDs []string) error {
-	secretPath := filepath.Join(p.StoreDir, secretName+".gpg")
+secretPath := filepath.Join(p.StoreDir, secretName+".gpg")
 
-	// Use gpg --list-packets to get recipient key IDs
-	cmd := exec.Command("gpg", "--list-packets", secretPath)
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
+// Use gpg --list-packets to get recipient key IDs
+cmd := exec.Command("gpg", "--list-packets", secretPath)
+var stdout bytes.Buffer
+cmd.Stdout = &stdout
 
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to list packets: %w", err)
-	}
-
-	output := stdout.String()
-
-	// Extract key IDs from output using regex (more robust than string splitting)
-	keyIDRegex := regexp.MustCompile(`keyid\s+([A-F0-9]+)`)
-	matches := keyIDRegex.FindAllStringSubmatch(output, -1)
-
-	var foundKeyIDs []string
-	for _, match := range matches {
-		if len(match) > 1 {
-			foundKeyIDs = append(foundKeyIDs, match[1])
-		}
-	}
-
-	if len(foundKeyIDs) == 0 {
-		return fmt.Errorf("no encryption recipients found in %s", secretName)
-	}
-
-	// Get expected key IDs by querying GPG for all emails in a single call (more efficient)
-	expectedKeyIDs := make(map[string]bool)
-	if len(expectedGPGIDs) > 0 {
-		args := append([]string{"--list-keys", "--with-colons"}, expectedGPGIDs...)
-		cmd := exec.Command("gpg", args...)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to get key info for recipients: %w", err)
-		}
-
-		// Extract encryption key IDs from both pub: and sub: lines with capability "e"
-		// Track current key to avoid collecting multiple subkeys from same GPG ID
-		var currentPubKey string
-		seenPubKeys := make(map[string]bool)
-
-		for _, line := range strings.Split(out.String(), "\n") {
-			if strings.HasPrefix(line, "pub:") {
-				fields := strings.Split(line, ":")
-				if len(fields) > 4 {
-					currentPubKey = fields[4]
-				}
-				// Check if pub key itself has encryption capability
-				if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
-					if !seenPubKeys[currentPubKey] {
-						expectedKeyIDs[fields[4]] = true
-						seenPubKeys[currentPubKey] = true
-					}
-				}
-			} else if strings.HasPrefix(line, "sub:") && currentPubKey != "" {
-				fields := strings.Split(line, ":")
-				// Field 12 (index 11) contains key capabilities, field 5 (index 4) is the key ID
-				// Only take first encryption subkey per pub key
-				if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
-					if !seenPubKeys[currentPubKey] {
-						expectedKeyIDs[fields[4]] = true
-						seenPubKeys[currentPubKey] = true
-					}
-				}
-			}
-		}
-	}
-
-	// Verify all expected keys are present
-	for keyID := range expectedKeyIDs {
-		found := false
-		for _, foundID := range foundKeyIDs {
-			if strings.HasSuffix(foundID, keyID) || strings.HasSuffix(keyID, foundID) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("secret %s is not encrypted for key %s (expected %d recipients, found %d)",
-				secretName, keyID, len(expectedKeyIDs), len(foundKeyIDs))
-		}
-	}
-
-	return nil
+if err := cmd.Run(); err != nil {
+return fmt.Errorf("failed to list packets: %w", err)
 }
+
+output := stdout.String()
+
+// Extract key IDs from output using regex (more robust than string splitting)
+keyIDRegex := regexp.MustCompile(`keyid\s+([A-F0-9]+)`)
+matches := keyIDRegex.FindAllStringSubmatch(output, -1)
+
+foundKeyIDs := make(map[string]bool)
+for _, match := range matches {
+if len(match) > 1 {
+foundKeyIDs[match[1]] = true
+}
+}
+
+if len(foundKeyIDs) == 0 {
+return fmt.Errorf("no encryption recipients found in %s", secretName)
+}
+
+// Get expected key IDs by querying GPG for each email individually
+// This ensures each GPG ID exists and we get exactly one key per ID
+expectedKeyIDs := make(map[string]bool)
+for _, gpgID := range expectedGPGIDs {
+cmd := exec.Command("gpg", "--list-keys", "--with-colons", gpgID)
+var out bytes.Buffer
+cmd.Stdout = &out
+
+if err := cmd.Run(); err != nil {
+return fmt.Errorf("GPG ID %s not found in keyring: %w", gpgID, err)
+}
+
+// Extract first encryption-capable key (pub: or sub: with capability "e")
+var keyIDFound bool
+for _, line := range strings.Split(out.String(), "\n") {
+if keyIDFound {
+break
+}
+
+if strings.HasPrefix(line, "pub:") {
+fields := strings.Split(line, ":")
+if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
+expectedKeyIDs[fields[4]] = true
+keyIDFound = true
+}
+} else if strings.HasPrefix(line, "sub:") {
+fields := strings.Split(line, ":")
+if len(fields) > 11 &&strings.Contains(fields[11], "e") && len(fields) > 4 {
+expectedKeyIDs[fields[4]] = true
+keyIDFound = true
+}
+}
+}
+
+if !keyIDFound {
+return fmt.Errorf("no encryption-capable key found for GPG ID %s", gpgID)
+}
+}
+
+// Verify all expected keys are present in the encrypted file
+for keyID := range expectedKeyIDs {
+found := false
+for foundID := range foundKeyIDs {
+// Match by suffix since GPG may use short or long key IDs
+if strings.HasSuffix(foundID, keyID) || strings.HasSuffix(keyID, foundID) {
+found = true
+break
+}
+}
+if !found {
+return fmt.Errorf("secret %s is not encrypted for key %s (expected %d recipients, found %d)",
+secretName, keyID, len(expectedKeyIDs), len(foundKeyIDs))
+}
+}
+
+return nil
+}
+
 
 // GetGPGIDs reads the current GPG IDs from the store
 func (p *Pass) GetGPGIDs() ([]string, error) {

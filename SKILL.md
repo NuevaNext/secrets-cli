@@ -25,6 +25,62 @@ All tests MUST run automatically on PR checks to prevent regressions.
 - **Use for**: Testing complete workflows, multi-component interactions
 - **Example**: Vault creation, secret encryption, member management
 
+## Testing Philosophy
+
+### Prefer Unit Tests Over E2E Tests
+
+**Always try to reproduce and fix bugs with unit tests first**, before relying on e2e tests:
+
+✅ **DO**:
+```go
+// Test the specific function in isolation
+func TestVerifyEncryption(t *testing.T) {
+    // Create minimal test case
+    // Debug the actual behavior
+    // Fix the root cause
+}
+```
+
+❌ **DON'T**:
+```bash
+# Only rely on e2e tests that test everything at once
+# Harder to debug, slower feedback loop
+```
+
+**Why?**
+- **Faster**: Unit tests run in milliseconds vs seconds for e2e
+- **Focused**: Isolate the exact function with the bug
+- **Debuggable**: Easier to add print statements, inspect state
+- **Reproducible**: Control all inputs precisely
+
+### Think About Correctness, Not Passing Tests
+
+**CRITICAL**: Do not fixate on making tests pass. Think about what behavior is CORRECT.
+
+❌ **WRONG approach**:
+```go
+// Test failing because key matching doesn't work? 
+// Let's just compare counts instead of fixing the matching!
+if len(found) >= len(expected) {  // 🚫 Makes test pass but wrong!
+    return nil
+}
+```
+
+✅ **CORRECT approach**:
+```go
+// Why is key matching failing?
+// Write a unit test to debug the actual key ID formats
+// Fix the root cause properly
+// Then all tests (unit + e2e) will pass
+```
+
+**Remember**: Tests are specifications of correct behavior. If a test fails, either:
+1. The code is wrong (fix the code)
+2. The test is wrong (fix the test)
+3. Both are wrong (fix both)
+
+Never change code JUST to make a test pass without understanding WHY it was failing.
+
 ## Testing Requirements for Bug Fixes
 
 ### Mandatory Test Checklist
