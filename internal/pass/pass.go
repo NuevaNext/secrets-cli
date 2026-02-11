@@ -23,7 +23,10 @@ func New(storeDir string) *Pass {
 // run executes a pass command with PASSWORD_STORE_DIR set
 func (p *Pass) run(args ...string) (string, error) {
 	cmd := exec.Command("pass", args...)
-	cmd.Env = append(os.Environ(), "PASSWORD_STORE_DIR="+p.StoreDir)
+	cmd.Env = append(os.Environ(),
+		"PASSWORD_STORE_DIR="+p.StoreDir,
+		"PASSWORD_STORE_GPG_OPTS=--trust-model always",
+	)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -43,7 +46,10 @@ func (p *Pass) run(args ...string) (string, error) {
 // runWithStdin executes a pass command with stdin input
 func (p *Pass) runWithStdin(input string, args ...string) (string, error) {
 	cmd := exec.Command("pass", args...)
-	cmd.Env = append(os.Environ(), "PASSWORD_STORE_DIR="+p.StoreDir)
+	cmd.Env = append(os.Environ(),
+		"PASSWORD_STORE_DIR="+p.StoreDir,
+		"PASSWORD_STORE_GPG_OPTS=--trust-model always",
+	)
 	cmd.Stdin = strings.NewReader(input)
 
 	var stdout, stderr bytes.Buffer
@@ -163,8 +169,98 @@ func (p *Pass) ReInit(gpgIDs []string) error {
 
 	// Re-init to re-encrypt all secrets
 	args := append([]string{"init", "--"}, gpgIDs...)
-	_, err := p.run(args...)
-	return err
+	if _, err := p.run(args...); err != nil {
+		return err
+	}
+
+	// Verify re-encryption succeeded for at least one secret
+	secrets, err := p.List()
+	if err != nil {
+		return fmt.Errorf("failed to list secrets after re-init: %w", err)
+	}
+
+	// If there are secrets, verify at least the first one is encrypted correctly
+	if len(secrets) > 0 {
+		if err := p.VerifyEncryption(secrets[0], gpgIDs); err != nil {
+			return fmt.Errorf("re-encryption verification failed: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// VerifyEncryption checks if a secret is encrypted for all expected GPG IDs
+func (p *Pass) VerifyEncryption(secretName string, expectedGPGIDs []string) error {
+	secretPath := filepath.Join(p.StoreDir, secretName+".gpg")
+
+	// Use gpg --list-packets to get recipient key IDs
+	cmd := exec.Command("gpg", "--list-packets", secretPath)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to list packets: %w", err)
+	}
+
+	output := stdout.String()
+
+	// Extract key IDs from output (format: ":pubkey enc packet: ... keyid KEYID")
+	var foundKeyIDs []string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, ":pubkey enc packet:") && strings.Contains(line, "keyid") {
+			parts := strings.Fields(line)
+			for i, part := range parts {
+				if part == "keyid" && i+1 < len(parts) {
+					foundKeyIDs = append(foundKeyIDs, parts[i+1])
+					break
+				}
+			}
+		}
+	}
+
+	if len(foundKeyIDs) == 0 {
+		return fmt.Errorf("no encryption recipients found in %s", secretName)
+	}
+
+	// Get expected key IDs by querying GPG for each email
+	expectedKeyIDs := make(map[string]bool)
+	for _, gpgID := range expectedGPGIDs {
+		cmd := exec.Command("gpg", "--list-keys", "--with-colons", gpgID)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to get key info for %s: %w", gpgID, err)
+		}
+
+		// Extract encryption subkey IDs (lines starting with "sub:" with capability "e")
+		for _, line := range strings.Split(out.String(), "\n") {
+			if strings.HasPrefix(line, "sub:") {
+				fields := strings.Split(line, ":")
+				if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
+					// Field 4 is the key ID
+					expectedKeyIDs[fields[4]] = true
+				}
+			}
+		}
+	}
+
+	// Verify all expected keys are present
+	for keyID := range expectedKeyIDs {
+		found := false
+		for _, foundID := range foundKeyIDs {
+			if strings.HasSuffix(foundID, keyID) || strings.HasSuffix(keyID, foundID) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("secret %s is not encrypted for key %s (expected %d recipients, found %d)",
+				secretName, keyID, len(expectedKeyIDs), len(foundKeyIDs))
+		}
+	}
+
+	return nil
 }
 
 // GetGPGIDs reads the current GPG IDs from the store
