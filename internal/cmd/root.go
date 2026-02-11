@@ -183,3 +183,12 @@ func validateName(name string) error {
 	}
 	return nil
 }
+
+// isTerminal returns true if the given file is a terminal
+func isTerminal(f *os.File) bool {
+	stat, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
+}
