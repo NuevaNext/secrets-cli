@@ -532,6 +532,26 @@ test_bob_can_read_dev_secret() {
     assert_success "$SECRET_CLI --email $BOB_EMAIL get dev database/password" || return 1
     assert_output_equals "my-secret-password-123" || return 1
     
+    # CRITICAL: Verify the .gpg file is actually encrypted for Bob's key
+    # This catches the bug where re-encryption silently fails with untrusted keys
+    local secret_file=".secrets/vaults/dev/.password-store/database/password.gpg"
+    local bob_key_id=$(gpg --list-keys --with-colons "$BOB_EMAIL" | grep '^sub:' | grep ':e:' | head -1 | cut -d: -f5)
+    
+    if [[ -z "$bob_key_id" ]]; then
+        test_fail "Bob's encryption key ID found" "empty"
+        return 1
+    fi
+    
+    # Check if Bob's key ID appears in the encrypted file's recipients
+    local recipients=$(gpg --list-packets "$secret_file" 2>&1 | grep 'keyid' | awk '{print $NF}')
+    
+    if ! echo "$recipients" | grep -q "$bob_key_id"; then
+        test_fail "Secret encrypted for Bob (key $bob_key_id)" "Recipients: $recipients"
+        return 1
+    fi
+    
+    test_log "✓ Verified secret is encrypted for Bob's key: $bob_key_id"
+    
     return 0
 }
 
