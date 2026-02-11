@@ -536,6 +536,55 @@ gh api repos/OWNER/REPO/pulls/PR_NUMBER/comments/COMMENT_ID/replies \
   -f body="✅ **Fixed** - Implemented regex parsing as suggested."
 ```
 
+## PR Merge Readiness Checklist
+
+**CRITICAL**: A PR is NOT ready for merge until ALL of the following are complete:
+
+### ✅ Before Declaring "Ready for Merge"
+
+- [ ] **All tests passing**
+  - Unit tests: `go test ./...`
+  - E2E tests: `./tests/run-tests.sh`
+  - CI checks: Green ✅
+
+- [ ] **All review comments addressed**
+  - Every comment has a reply
+  - Each reply indicates: Fixed / Acknowledged / Not Applicable
+  - No unresolved threads
+
+- [ ] **All TODO items completed**
+  - Check PR description for TODO lists
+  - Check PR comments for TODO lists
+  - Mark all checkboxes `[x]`
+  - Update status comment to reflect completion
+
+- [ ] **Code quality**
+  - No linting errors
+  - Code builds successfully
+  - All new code has tests
+
+### Common Mistakes to Avoid
+
+❌ **DON'T say "Ready for merge" if:**
+- Tests are passing BUT review comments aren't replied to
+- Review comments are replied to BUT TODOs aren't checked off
+- Everything looks good BUT you haven't actually verified each item
+
+✅ **DO verify each item explicitly:**
+```bash
+# Check tests
+go test ./...
+./tests/run-tests.sh
+gh pr checks PR_NUMBER
+
+# Check review comments
+gh pr view PR_NUMBER --json reviews
+gh api repos/OWNER/REPO/pulls/PR_NUMBER/comments
+
+# Check TODOs in PR comments
+gh pr view PR_NUMBER --comments | grep -E "\- \[ \]"
+```
+
 ## Summary
 
 **Golden Rule**: If you fix a bug, write a test that would have caught it.
@@ -547,3 +596,5 @@ gh api repos/OWNER/REPO/pulls/PR_NUMBER/comments/COMMENT_ID/replies \
 **CI/CD**: All tests run on PRs automatically. No exceptions.
 
 **PR Reviews**: Reply to ALL review comments, acknowledging what was done.
+
+**Merge Readiness**: Check ALL items (tests, comments, TODOs) before declaring ready.
