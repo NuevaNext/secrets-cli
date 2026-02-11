@@ -683,6 +683,100 @@ test_setup_imports_keys() {
 }
 
 # =============================================================================
+# Tests: Untrusted Key Re-encryption (Regression Test)
+# =============================================================================
+
+test_untrusted_key_reencryption() {
+    cd "$TEST_DIR"
+    
+    # This test simulates the real-world bug where adding a member with an
+    # untrusted GPG key would silently fail to re-encrypt secrets.
+    test_log "Generating Charlie's key in separate keyring (simulates external key)..."
+    
+    # Create temporary keyring for Charlie
+    local charlie_gnupghome=$(mktemp -d)
+    
+    # Generate Charlie's key in isolated keyring
+    GNUPGHOME="$charlie_gnupghome" gpg --batch --gen-key <<EOF
+%no-protection
+Key-Type: RSA
+Key-Length: 2048
+Subkey-Type: RSA
+Subkey-Length: 2048
+Name-Real: Charlie External
+Name-Email: charlie@external.com
+Expire-Date: 0
+%commit
+EOF
+    
+    # Export Charlie's public key
+    local charlie_key_file="${TEST_DIR}/charlie.asc"
+    GNUPGHOME="$charlie_gnupghome" gpg --armor --export charlie@external.com > "$charlie_key_file"
+    
+    # Import Charlie's key into main keyring (will be UNTRUSTED)
+    gpg --import "$charlie_key_file" 2>&1 || true
+    
+    # Verify Charlie's key is untrusted
+    local trust_level=$(gpg --list-keys --with-colons charlie@external.com | grep '^pub:' | cut -d: -f2)
+    if [[ "$trust_level" != "-" && "$trust_level" != "q" ]]; then
+        test_fail "Charlie's key untrusted (expected -, got $trust_level)" ""
+        rm -rf "$charlie_gnupghome" "$charlie_key_file"
+        return 1
+    fi
+    
+    test_log "✓ Charlie's key is untrusted (trust level: $trust_level)"
+    
+    # Create a test vault with a secret
+    assert_success "$SECRET_CLI vault create untrusted-test" || {
+        rm -rf "$charlie_gnupghome" "$charlie_key_file"
+        return 1
+    }
+    
+    assert_success "echo 'untrusted-secret-value' | $SECRET_CLI --email $ALICE_EMAIL set untrusted-test test/secret" || {
+        rm -rf "$charlie_gnupghome" "$charlie_key_file"
+        return 1
+    }
+    
+    # Add Charlie's key to secrets-cli
+    assert_success "$SECRET_CLI key add charlie@external.com" || {
+        rm -rf "$charlie_gnupghome" "$charlie_key_file"
+        return 1
+    }
+    
+    # CRITICAL: Add Charlie as a member (this would silently fail before the fix)
+    assert_success "$SECRET_CLI --email $ALICE_EMAIL vault add-member untrusted-test charlie@external.com" || {
+        rm -rf "$charlie_gnupghome" "$charlie_key_file"
+        return 1
+    }
+    
+    # Get Charlie's encryption key ID (field 5 from sub: lines with 'e' in usage field 12)
+    local charlie_key_id=$(gpg --list-keys --with-colons charlie@external.com | awk -F: '/^sub:/ && $12 ~ /e/ {print $5; exit}')
+    
+    if [[ -z "$charlie_key_id" ]]; then
+        test_fail "Charlie's encryption key ID found" "empty"
+        rm -rf "$charlie_gnupghome" "$charlie_key_file"
+        return 1
+    fi
+    
+    # VERIFICATION: Check if the secret is actually encrypted for Charlie
+    local secret_file=".secrets/vaults/untrusted-test/.password-store/test/secret.gpg"
+    local recipients=$(gpg --list-packets "$secret_file" 2>&1 | grep 'keyid' | awk '{print $NF}')
+    
+    if ! echo "$recipients" | grep -q "$charlie_key_id"; then
+        test_fail "Secret encrypted for untrusted key (Charlie: $charlie_key_id)" "Recipients: $recipients"
+        rm -rf "$charlie_gnupghome" "$charlie_key_file"
+        return 1
+    fi
+    
+    test_log "✓ Verified secret is encrypted for untrusted key: $charlie_key_id"
+    
+    # Cleanup
+    rm -rf "$charlie_gnupghome" "$charlie_key_file"
+    
+    return 0
+}
+
+# =============================================================================
 # Register All Tests
 # =============================================================================
 
