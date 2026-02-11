@@ -245,12 +245,32 @@ func (p *Pass) VerifyEncryption(secretName string, expectedGPGIDs []string) erro
 		}
 
 		// Extract encryption key IDs from both pub: and sub: lines with capability "e"
+		// Track current key to avoid collecting multiple subkeys from same GPG ID
+		var currentPubKey string
+		seenPubKeys := make(map[string]bool)
+
 		for _, line := range strings.Split(out.String(), "\n") {
-			if strings.HasPrefix(line, "pub:") || strings.HasPrefix(line, "sub:") {
+			if strings.HasPrefix(line, "pub:") {
+				fields := strings.Split(line, ":")
+				if len(fields) > 4 {
+					currentPubKey = fields[4]
+				}
+				// Check if pub key itself has encryption capability
+				if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
+					if !seenPubKeys[currentPubKey] {
+						expectedKeyIDs[fields[4]] = true
+						seenPubKeys[currentPubKey] = true
+					}
+				}
+			} else if strings.HasPrefix(line, "sub:") && currentPubKey != "" {
 				fields := strings.Split(line, ":")
 				// Field 12 (index 11) contains key capabilities, field 5 (index 4) is the key ID
+				// Only take first encryption subkey per pub key
 				if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
-					expectedKeyIDs[fields[4]] = true
+					if !seenPubKeys[currentPubKey] {
+						expectedKeyIDs[fields[4]] = true
+						seenPubKeys[currentPubKey] = true
+					}
 				}
 			}
 		}
