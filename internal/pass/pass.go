@@ -218,7 +218,7 @@ return fmt.Errorf("failed to list packets: %w", err)
 output := stdout.String()
 
 // Extract key IDs from output using regex (more robust than string splitting)
-keyIDRegex := regexp.MustCompile(`keyid\s+([A-F0-9]+)`)
+keyIDRegex := regexp.MustCompile(`(?i)keyid\s+([A-F0-9]+)`)
 matches := keyIDRegex.FindAllStringSubmatch(output, -1)
 
 foundKeyIDs := make(map[string]bool)
@@ -254,13 +254,13 @@ break
 if strings.HasPrefix(line, "pub:") {
 fields := strings.Split(line, ":")
 if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
-expectedKeyIDs[fields[4]] = true
+expectedKeyIDs[strings.ToUpper(fields[4])] = true
 keyIDFound = true
 }
 } else if strings.HasPrefix(line, "sub:") {
 fields := strings.Split(line, ":")
 if len(fields) > 11 &&strings.Contains(fields[11], "e") && len(fields) > 4 {
-expectedKeyIDs[fields[4]] = true
+expectedKeyIDs[strings.ToUpper(fields[4])] = true
 keyIDFound = true
 }
 }
