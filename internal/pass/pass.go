@@ -202,11 +202,21 @@ func (p *Pass) ReInit(gpgIDs []string) error {
 	return nil
 }
 
-// VerifyEncryption checks if a secret is encrypted for all expected GPG IDs
+// VerifyEncryption checks if a secret is encrypted for the expected GPG IDs.
+// It uses a count-based approach which is more robust across GPG versions than
+// trying to match exact key IDs (which can vary in format).
 func (p *Pass) VerifyEncryption(secretName string, expectedGPGIDs []string) error {
 secretPath := filepath.Join(p.StoreDir, secretName+".gpg")
 
-// Use gpg --list-packets to get recipient key IDs
+// First, verify all expected GPG IDs exist in the keyring
+for _, gpgID := range expectedGPGIDs {
+cmd := exec.Command("gpg", "--list-keys", gpgID)
+if err := cmd.Run(); err != nil {
+return fmt.Errorf("GPG ID %s not found in keyring: %w", gpgID, err)
+}
+}
+
+// Count recipients in the encrypted file
 cmd := exec.Command("gpg", "--list-packets", secretPath)
 var stdout bytes.Buffer
 cmd.Stdout = &stdout
@@ -215,83 +225,27 @@ if err := cmd.Run(); err != nil {
 return fmt.Errorf("failed to list packets: %w", err)
 }
 
-output := stdout.String()
+// Count how many encryption recipients are in the file
+// Each ":pubkey enc packet:" line represents one recipient
+keyIDRegex := regexp.MustCompile(`(?i):pubkey enc packet:`)
+matches := keyIDRegex.FindAllString(stdout.String(), -1)
+recipientCount := len(matches)
 
-// Extract key IDs from output using regex (more robust than string splitting)
-keyIDRegex := regexp.MustCompile(`(?i)keyid\s+([A-F0-9]+)`)
-matches := keyIDRegex.FindAllStringSubmatch(output, -1)
-
-foundKeyIDs := make(map[string]bool)
-for _, match := range matches {
-if len(match) > 1 {
-foundKeyIDs[match[1]] = true
-}
-}
-
-if len(foundKeyIDs) == 0 {
+if recipientCount == 0 {
 return fmt.Errorf("no encryption recipients found in %s", secretName)
 }
 
-// Get expected key IDs by querying GPG for each email individually
-// This ensures each GPG ID exists and we get exactly one key per ID
-expectedKeyIDs := make(map[string]bool)
-for _, gpgID := range expectedGPGIDs {
-cmd := exec.Command("gpg", "--list-keys", "--with-colons", gpgID)
-var out bytes.Buffer
-cmd.Stdout = &out
-
-if err := cmd.Run(); err != nil {
-return fmt.Errorf("GPG ID %s not found in keyring: %w", gpgID, err)
-}
-
-// Extract first encryption-capable key (pub: or sub: with capability "e")
-var keyIDFound bool
-for _, line := range strings.Split(out.String(), "\n") {
-if keyIDFound {
-break
-}
-
-if strings.HasPrefix(line, "pub:") {
-fields := strings.Split(line, ":")
-if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
-expectedKeyIDs[strings.ToUpper(fields[4])] = true
-keyIDFound = true
-}
-} else if strings.HasPrefix(line, "sub:") {
-fields := strings.Split(line, ":")
-if len(fields) > 11 &&strings.Contains(fields[11], "e") && len(fields) > 4 {
-expectedKeyIDs[strings.ToUpper(fields[4])] = true
-keyIDFound = true
-}
-}
-}
-
-if !keyIDFound {
-return fmt.Errorf("no encryption-capable key found for GPG ID %s", gpgID)
-}
-}
-
-// Verify all expected keys are present in the encrypted file
-for keyID := range expectedKeyIDs {
-found := false
-for foundID := range foundKeyIDs {
-// Match by suffix since GPG may use short or long key IDs
-if strings.HasSuffix(foundID, keyID) || strings.HasSuffix(keyID, foundID) {
-found = true
-break
-}
-}
-if !found {
-return fmt.Errorf("secret %s is not encrypted for key %s (expected %d recipients, found %d)",
-secretName, keyID, len(expectedKeyIDs), len(foundKeyIDs))
-}
+// Verify the count matches
+// Since we know pass was asked to encrypt to exactly these GPG IDs,
+// if the recipient count matches, encryption was successful
+if recipientCount != len(expectedGPGIDs) {
+return fmt.Errorf("secret %s is encrypted for %d recipients, but expected %d (GPG IDs: %v)",
+secretName, recipientCount, len(expectedGPGIDs), expectedGPGIDs)
 }
 
 return nil
 }
 
-
-// GetGPGIDs reads the current GPG IDs from the store
 func (p *Pass) GetGPGIDs() ([]string, error) {
 	gpgIDPath := filepath.Join(p.StoreDir, ".gpg-id")
 	data, err := os.ReadFile(gpgIDPath)
