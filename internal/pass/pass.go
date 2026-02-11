@@ -237,8 +237,8 @@ func (p *Pass) VerifyEncryption(secretName string, expectedGPGIDs []string) erro
 		for _, line := range strings.Split(out.String(), "\n") {
 			if strings.HasPrefix(line, "sub:") {
 				fields := strings.Split(line, ":")
+				// Field 12 (index 11) contains key capabilities, field 5 (index 4) is the key ID
 				if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
-					// Field 4 is the key ID
 					expectedKeyIDs[fields[4]] = true
 				}
 			}

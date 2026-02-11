@@ -535,7 +535,9 @@ test_bob_can_read_dev_secret() {
     # CRITICAL: Verify the .gpg file is actually encrypted for Bob's key
     # This catches the bug where re-encryption silently fails with untrusted keys
     local secret_file=".secrets/vaults/dev/.password-store/database/password.gpg"
-    local bob_key_id=$(gpg --list-keys --with-colons "$BOB_EMAIL" | grep '^sub:' | grep ':e:' | head -1 | cut -d: -f5)
+    
+    # Get Bob's encryption subkey ID (field 5 from sub: lines with 'e' in usage field 12)
+    local bob_key_id=$(gpg --list-keys --with-colons "$BOB_EMAIL" | awk -F: '/^sub:/ && $12 ~ /e/ {print $5; exit}')
     
     if [[ -z "$bob_key_id" ]]; then
         test_fail "Bob's encryption key ID found" "empty"
@@ -933,8 +935,8 @@ EOF
         return 1
     }
     
-    # Get Charlie's encryption key ID
-    local charlie_key_id=$(gpg --list-keys --with-colons charlie@external.com | grep '^sub:' | grep ':e:' | head -1 | cut -d: -f5)
+    # Get Charlie's encryption key ID (field 5 from sub: lines with 'e' in usage field 12)
+    local charlie_key_id=$(gpg --list-keys --with-colons charlie@external.com | awk -F: '/^sub:/ && $12 ~ /e/ {print $5; exit}')
     
     if [[ -z "$charlie_key_id" ]]; then
         test_fail "Charlie's encryption key ID found" "empty"
