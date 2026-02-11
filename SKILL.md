@@ -598,3 +598,23 @@ gh pr view PR_NUMBER --comments | grep -E "\- \[ \]"
 **PR Reviews**: Reply to ALL review comments, acknowledging what was done.
 
 **Merge Readiness**: Check ALL items (tests, comments, TODOs) before declaring ready.
+
+---
+
+## Pull Request Process
+
+For the complete, detailed pull request submission and review process, see:
+
+**📋 [PR-PROCESS.md](PR-PROCESS.md)**
+
+This document covers:
+- Step 0: Prerequisites before submission
+- Steps 1-8: Complete review and merge process  
+- When to iterate back to testing
+- TODO tracking and comment replies
+- Final verification checklist
+
+**Quick Reference:**
+- Use `.github/pull_request_template.md` for all PRs
+- Follow PR-PROCESS.md step-by-step
+- No PR is ready for merge until ALL steps complete
