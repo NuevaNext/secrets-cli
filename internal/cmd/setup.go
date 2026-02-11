@@ -34,6 +34,12 @@ func runSetup(cmd *cobra.Command, args []string) error {
 	secretsDir := GetSecretsDir()
 	email := GetUserEmail()
 
+	if email != "" {
+		if err := validateName(email); err != nil {
+			return err
+		}
+	}
+
 	// Check if secrets directory exists
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
