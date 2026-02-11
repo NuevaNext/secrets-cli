@@ -1,33 +1,51 @@
 ---
-name: secrets-cli Testing Requirements
-description: Comprehensive testing requirements and guidelines for secrets-cli development. Every bug fix MUST include tests. All tests MUST run on PR checks.
+name: secrets-cli Development Guidelines
+description: Testing requirements, documentation policy, and essential references for secrets-cli development
 ---
 
-# secrets-cli Testing Requirements
+# secrets-cli Development Guidelines
 
-## Core Principle
+## 🚨 CRITICAL: Read This First
+
+**Before submitting any PR or making changes, you MUST read:**
+
+### 📋 [PR-PROCESS.md](PR-PROCESS.md) - Complete Pull Request Process
+
+This document is **MANDATORY** reading. It covers:
+- ✅ Prerequisites before PR submission (Step 0)
+- 🔄 Complete review and iteration process (Steps 1-8)
+- 📝 How to track and address review comments
+- ✅ Final verification before merge
+
+**Key principle**: The PR process has a loop (Steps 2 → 3 → 3.5 → back to 2) that you'll iterate through multiple times. Understanding this flow is essential.
+
+---
+
+## Testing Requirements
+
+### Core Principle
 
 **Every bug fix SHALL include additional tests (unit or e2e) that would have caught the bug.**
 
 All tests MUST run automatically on PR checks to prevent regressions.
 
-## Test Types
+### Test Types
 
-### 1. Unit Tests (Preferred when possible)
+#### 1. Unit Tests (Preferred when possible)
 - **Location**: `*_test.go` files alongside source code
 - **Run with**: `go test ./...`
 - **Use for**: Testing individual functions, logic, data structures
 - **Example**: Testing GPG key parsing, configuration validation, etc.
 
-### 2. E2E Tests (Required for integration scenarios)
+#### 2. E2E Tests (Required for integration scenarios)
 - **Location**: `tests/e2e-tests.sh`
 - **Run with**: `./tests/run-tests.sh`
 - **Use for**: Testing complete workflows, multi-component interactions
 - **Example**: Vault creation, secret encryption, member management
 
-## Testing Philosophy
+### Testing Philosophy
 
-### Prefer Unit Tests Over E2E Tests
+#### Prefer Unit Tests Over E2E Tests
 
 **Always try to reproduce and fix bugs with unit tests first**, before relying on e2e tests:
 
@@ -48,385 +66,44 @@ func TestVerifyEncryption(t *testing.T) {
 ```
 
 **Why?**
-- **Faster**: Unit tests run in milliseconds vs seconds for e2e
-- **Focused**: Isolate the exact function with the bug
-- **Debuggable**: Easier to add print statements, inspect state
-- **Reproducible**: Control all inputs precisely
+- Unit tests are **fast** (milliseconds vs seconds)
+- Unit tests **isolate** the problem to a specific function
+- Unit tests give **precise** error messages
+- E2E tests test too many things at once, making debugging hard
 
-### Think About Correctness, Not Passing Tests
+#### Focus on Correctness, Not Just Passing Tests
 
-**CRITICAL**: Do not fixate on making tests pass. Think about what behavior is CORRECT.
+❌ **DON'T** make changes just to make tests pass  
+✅ **DO** understand the root cause and fix it correctly
 
-❌ **WRONG approach**:
-```go
-// Test failing because key matching doesn't work? 
-// Let's just compare counts instead of fixing the matching!
-if len(found) >= len(expected) {  // 🚫 Makes test pass but wrong!
-    return nil
-}
-```
+**Example**: If a test expects key ID matching to work, don't hack the matching logic. Instead, understand WHY the matching fails (e.g., GPG version differences) and implement a robust solution (e.g., count-based verification).
 
-✅ **CORRECT approach**:
-```go
-// Why is key matching failing?
-// Write a unit test to debug the actual key ID formats
-// Fix the root cause properly
-// Then all tests (unit + e2e) will pass
-```
+### Test Quality Standards
 
-**Remember**: Tests are specifications of correct behavior. If a test fails, either:
-1. The code is wrong (fix the code)
-2. The test is wrong (fix the test)
-3. Both are wrong (fix both)
+When writing tests:
 
-Never change code JUST to make a test pass without understanding WHY it was failing.
+✅ **DO**:
+- Test actual behavior and state changes
+- Use descriptive test names
+- Include edge cases
+- Test error conditions
+- Add comments explaining what bug the test prevents
 
-## Testing Requirements for Bug Fixes
+❌ **DON'T**:
+- Test only success paths
+- Only verify command exit codes (verify actual state!)
+- Skip edge cases like untrusted keys, empty inputs, etc.
 
-### Mandatory Test Checklist
-
-When fixing a bug, you MUST:
-
-1. ✅ **Understand the root cause** - Document why the bug occurred
-2. ✅ **Write a test that fails** - Reproduce the bug in a test
-3. ✅ **Implement the fix** - Make the test pass
-4. ✅ **Verify the test catches the bug** - Temporarily revert fix, confirm test fails
-5. ✅ **Document the test** - Add comments explaining what bug it prevents
-
-### Test Requirements by Bug Type
-
-#### Cryptographic Operations
-When fixing bugs related to encryption, decryption, or key management:
-
-**MUST verify actual cryptographic state**, not just command success:
-
-```bash
-# ❌ INSUFFICIENT - Only checks command success
-assert_success "$SECRET_CLI vault add-member dev bob@example.com"
-
-# ✅ REQUIRED - Verifies actual encryption
-assert_success "$SECRET_CLI vault add-member dev bob@example.com"
-
-# Verify .gpg file is actually encrypted for Bob's key
-local bob_key_id=$(gpg --list-keys --with-colons bob@example.com | grep '^sub:' | grep ':e:' | head -1 | cut -d: -f5)
-local recipients=$(gpg --list-packets secret.gpg 2>&1 | grep 'keyid')
-
-if ! echo "$recipients" | grep -q "$bob_key_id"; then
-    test_fail "Secret NOT encrypted for Bob's key"
-fi
-```
-
-**MUST test with untrusted keys** when relevant:
-
-```bash
-# Simulate real-world scenario: import external untrusted key
-GNUPGHOME="$temp_keyring" gpg --batch --gen-key <<EOF
-...
-EOF
-
-# Export and import as untrusted
-gpg --import external_key.asc
-
-# Verify trust level is untrusted
-trust_level=$(gpg --list-keys --with-colons user@example.com | grep '^pub:' | cut -d: -f2)
-[[ "$trust_level" == "-" ]] || test_fail "Key should be untrusted"
-
-# Now test the operation with untrusted key
-```
-
-#### File System Operations
-When fixing bugs related to file creation, deletion, or modification:
-
-**MUST verify actual file state**:
-
-```bash
-# ❌ INSUFFICIENT
-assert_success "$SECRET_CLI vault create dev"
-
-# ✅ REQUIRED
-assert_success "$SECRET_CLI vault create dev"
-assert_dir_exists ".secrets/vaults/dev"
-assert_file_exists ".secrets/vaults/dev/vault.yaml"
-assert_dir_exists ".secrets/vaults/dev/.password-store"
-```
-
-#### Multi-User/Permission Bugs
-When fixing bugs related to access control or multi-user scenarios:
-
-**MUST test with multiple users**:
-
-```bash
-# Test as Alice
-assert_success "$SECRET_CLI --email alice@example.com set dev secret"
-
-# Test as Bob (should fail if not a member)
-assert_failure "$SECRET_CLI --email bob@example.com get dev secret"
-assert_output_contains "Access denied"
-
-# Add Bob, then verify access
-assert_success "$SECRET_CLI --email alice@example.com vault add-member dev bob@example.com"
-assert_success "$SECRET_CLI --email bob@example.com get dev secret"
-```
-
-## E2E Test Structure
-
-### Adding a New E2E Test
-
-1. **Define the test function** in `tests/e2e-tests.sh`:
-
-```bash
-test_your_feature_name() {
-    cd "$TEST_DIR"
-    
-    # Setup: Create necessary state
-    assert_success "$SECRET_CLI vault create test-vault"
-    
-    # Action: Perform the operation being tested
-    assert_success "$SECRET_CLI some-command"
-    
-    # Verification: Check the results
-    assert_file_exists "expected/file.txt"
-    assert_output_contains "expected output"
-    
-    # Cleanup: Remove temporary resources (if needed)
-    rm -rf temp-files
-    
-    return 0
-}
-```
-
-2. **Register the test** in the `register_tests()` function:
-
-```bash
-register_test "your_feature_name" test_your_feature_name \
-    "Brief description of what this test verifies"
-```
-
-3. **Update the test count** in `list_tests()`:
-
-```bash
-echo "Available tests (N total):"  # Increment N
-```
-
-### Test Naming Conventions
-
-- **Function name**: `test_<feature>_<scenario>`
-- **Registration name**: `<feature>_<scenario>` (no `test_` prefix)
-- **Examples**:
-  - `test_vault_add_member` → `vault_add_member`
-  - `test_untrusted_key_reencryption` → `untrusted_key_reencryption`
-
-## CI/CD Integration
-
-### PR Workflow
-
-All tests run automatically on PRs via `.github/workflows/pr.yml`:
-
-```yaml
-- name: Run E2E Tests
-  run: ./tests/run-tests.sh --rebuild
-```
-
-### Test Execution
-
-1. **Build**: `make build` creates the `secrets-cli` binary
-2. **Docker**: Tests run in isolated Docker container (`tests/Dockerfile`)
-3. **E2E**: All registered tests execute sequentially
-4. **Report**: Results posted as PR comment
-
-### Adding New Test Files
-
-If you add a new test script (not in `e2e-tests.sh`):
-
-1. **Copy to Docker image** in `tests/Dockerfile`:
-
-```dockerfile
-COPY tests/your-new-test.sh /workspace/tests/your-new-test.sh
-RUN chmod +x /workspace/tests/your-new-test.sh
-```
-
-2. **Call from run-tests.sh** or integrate into `e2e-tests.sh`
-
-## Common Testing Patterns
-
-### Pattern 1: Verify Encryption Recipients
-
-```bash
-# Get expected key ID
-local expected_key_id=$(gpg --list-keys --with-colons user@example.com | grep '^sub:' | grep ':e:' | head -1 | cut -d: -f5)
-
-# Get actual recipients from .gpg file
-local actual_recipients=$(gpg --list-packets file.gpg 2>&1 | grep 'keyid' | awk '{print $NF}')
-
-# Verify
-if ! echo "$actual_recipients" | grep -q "$expected_key_id"; then
-    test_fail "File not encrypted for expected key"
-fi
-```
-
-### Pattern 2: Test with Untrusted Key
-
-```bash
-# Create separate keyring
-local temp_gnupghome=$(mktemp -d)
-
-# Generate key in isolation
-GNUPGHOME="$temp_gnupghome" gpg --batch --gen-key <<EOF
-%no-protection
-Key-Type: RSA
-Key-Length: 2048
-Name-Email: external@example.com
-%commit
-EOF
-
-# Export and import as untrusted
-GNUPGHOME="$temp_gnupghome" gpg --armor --export external@example.com > /tmp/key.asc
-gpg --import /tmp/key.asc
-
-# Verify untrusted
-trust=$(gpg --list-keys --with-colons external@example.com | grep '^pub:' | cut -d: -f2)
-[[ "$trust" == "-" ]] || test_fail "Key should be untrusted"
-
-# Cleanup
-rm -rf "$temp_gnupghome" /tmp/key.asc
-```
-
-### Pattern 3: Multi-User Access
-
-```bash
-# Setup: Create vault and secret as Alice
-assert_success "$SECRET_CLI --email alice@example.com vault create shared"
-assert_success "echo 'secret' | $SECRET_CLI --email alice@example.com set shared test"
-
-# Test: Bob cannot access (not a member)
-assert_failure "$SECRET_CLI --email bob@example.com get shared test"
-
-# Action: Add Bob
-assert_success "$SECRET_CLI --email alice@example.com vault add-member shared bob@example.com"
-
-# Verify: Bob can now access
-assert_success "$SECRET_CLI --email bob@example.com get shared test"
-assert_output_equals "secret"
-```
-
-## Regression Test Requirements
-
-### When to Add Regression Tests
-
-Add a regression test when:
-
-1. **Silent failure** - Operation appeared to succeed but didn't
-2. **Edge case** - Bug only manifests in specific conditions
-3. **Integration issue** - Bug involves multiple components
-4. **Security issue** - Bug has security implications
-
-### Regression Test Template
-
-```bash
-test_regression_<bug_description>() {
-    cd "$TEST_DIR"
-    
-    # CONTEXT: Explain the bug this test prevents
-    # Bug: <Brief description>
-    # Root cause: <Why it happened>
-    # Fixed in: <PR or commit reference>
-    
-    # SETUP: Create conditions that trigger the bug
-    # ...
-    
-    # ACTION: Perform operation that would fail with bug
-    # ...
-    
-    # VERIFICATION: Check that bug is fixed
-    # This should verify the ACTUAL state, not just command success
-    # ...
-    
-    return 0
-}
-```
-
-### Example: Re-encryption Bug
-
-```bash
-test_untrusted_key_reencryption() {
-    # CONTEXT: Regression test for silent re-encryption failure
-    # Bug: Adding member with untrusted GPG key would report success
-    #      but silently fail to re-encrypt secrets
-    # Root cause: GPG refuses to encrypt to untrusted keys in --batch mode
-    # Fixed in: PR #18
-    
-    # SETUP: Create untrusted key (simulates external import)
-    local temp_keyring=$(mktemp -d)
-    GNUPGHOME="$temp_keyring" gpg --batch --gen-key <<EOF
-...
-EOF
-    
-    # ACTION: Add untrusted key as vault member
-    assert_success "$SECRET_CLI vault add-member test charlie@external.com"
-    
-    # VERIFICATION: Verify secret is ACTUALLY encrypted for Charlie
-    local charlie_key_id=$(gpg --list-keys --with-colons charlie@external.com | grep '^sub:' | grep ':e:' | head -1 | cut -d: -f5)
-    local recipients=$(gpg --list-packets secret.gpg 2>&1 | grep 'keyid')
-    
-    if ! echo "$recipients" | grep -q "$charlie_key_id"; then
-        test_fail "Secret not encrypted for untrusted key (regression!)"
-    fi
-}
-```
-
-## Test Quality Standards
-
-### Required Elements
-
-Every test MUST have:
-
-1. ✅ **Clear purpose** - Comment explaining what it tests
-2. ✅ **Proper setup** - Create necessary preconditions
-3. ✅ **Explicit verification** - Check actual state, not just success
-4. ✅ **Cleanup** - Remove temporary resources
-5. ✅ **Error handling** - Fail fast with clear messages
-
-### Anti-Patterns to Avoid
-
-❌ **Don't trust command success alone**:
-```bash
-# BAD
-assert_success "$SECRET_CLI vault add-member dev bob@example.com"
-# What if it succeeded but didn't actually add Bob?
-```
-
-❌ **Don't skip verification**:
-```bash
-# BAD
-assert_success "$SECRET_CLI set dev secret"
-# Did it actually create the file? Is it encrypted?
-```
-
-❌ **Don't test in isolation only**:
-```bash
-# BAD - Only tests with trusted keys
-generate_gpg_key "bob@example.com"
-assert_success "$SECRET_CLI vault add-member dev bob@example.com"
-# Real users import external untrusted keys!
-```
-
-❌ **Don't ignore edge cases**:
-```bash
-# BAD - Only tests happy path
-assert_success "$SECRET_CLI vault create dev"
-# What about duplicate names? Invalid characters? Permissions?
-```
+---
 
 ## Documentation Policy
 
-**IMPORTANT**: Do NOT add ephemeral, bug-specific documentation files to the repository.
+### What NOT to Document
 
-### What NOT to Add
-
-❌ **Avoid creating these types of files**:
-- `BUGFIX-*.md` - Detailed analysis of specific bugs
-- `TEST-COVERAGE-ANALYSIS.md` - Why tests didn't catch a specific bug  
-- `SUMMARY.md` - Summaries of specific PRs or bug fixes
+❌ **NEVER create these files**:
+- `BUGFIX-*.md` - Bug-specific documentation
+- `TEST-COVERAGE-ANALYSIS.md` - Test analysis docs
+- `SUMMARY.md` - Temporary status/summary files
 - Any other documentation that describes a specific bug or fix
 
 ### Why
@@ -437,6 +114,7 @@ assert_success "$SECRET_CLI vault create dev"
   - **Commit messages** - Permanent git history
   - **Code comments** - Inline explanations
   - **This SKILL.md** - General patterns and requirements
+  - **PR-PROCESS.md** - Process guidelines
 
 ### What TO Document
 
@@ -444,49 +122,30 @@ assert_success "$SECRET_CLI vault create dev"
 - **Code comments** - Explain WHY the code does something, especially for bug fixes
 - **Test comments** - Explain what bug a regression test prevents
 - **SKILL.md updates** - Add general patterns learned from the bug
+- **PR-PROCESS.md updates** - Add process improvements (if applicable)
 
 ### Example
 
 Instead of creating `BUGFIX-untrusted-keys.md`, add a comment in the code:
 
 ```go
-// Set trust-model to always to handle untrusted GPG keys.
-// Without this, GPG refuses to encrypt to untrusted keys in batch mode,
-// causing silent re-encryption failures when adding new vault members.
-existingOpts := os.Getenv("PASSWORD_STORE_GPG_OPTS")
-gpgOpts := "--trust-model always"
+// Use --trust-model always to allow encryption to untrusted keys.
+// Without this, GPG silently fails when keys have trust level "-" (unknown),
+// causing re-encryption to appear successful but not actually update the files.
+cmd.Env = append(os.Environ(), "PASSWORD_STORE_GPG_OPTS=--trust-model always")
 ```
 
-And update this SKILL.md with the general pattern if it's broadly applicable.
+---
 
-## Quick Reference
+## E2E Test Helpers
 
-### Running Tests Locally
-
-```bash
-# All e2e tests
-./tests/run-tests.sh
-
-# Specific test
-./tests/run-tests.sh -t vault_create
-
-# Verbose output
-./tests/run-tests.sh -v
-
-# Force rebuild
-./tests/run-tests.sh --rebuild
-
-# List all tests
-./tests/run-tests.sh -l
-```
-
-### Test Assertions Available
+### Available Helper Functions
 
 ```bash
-assert_success "command"              # Command must succeed
-assert_failure "command"              # Command must fail
+# Assertions
+assert_success                        # Command must succeed (exit 0)
+assert_failure                        # Command must fail (exit != 0)
 assert_output_contains "text"         # Output must contain text
-assert_output_equals "text"           # Output must equal text exactly
 assert_output_not_contains "text"     # Output must NOT contain text
 assert_file_exists "path"             # File must exist
 assert_dir_exists "path"              # Directory must exist
@@ -494,127 +153,24 @@ test_fail "expected" "actual"         # Manual failure with message
 test_log "message"                    # Log message (verbose mode)
 ```
 
-## PR Review Process
-
-### Responding to Review Comments
-
-**IMPORTANT**: When a PR receives review comments, you MUST reply to EVERY comment, acknowledging it and explaining what was done.
-
-**For each review comment:**
-
-✅ **If fixed:**
-```
-✅ **Fixed** - [Brief explanation of what was done]
-```
-
-ℹ️ **If acknowledged but implemented differently:**
-```
-✅ **Acknowledged** - [Explanation of the alternative approach and why]
-```
-
-❌ **If not applicable:**
-```
-ℹ️ **Not applicable** - [Clear explanation of why this doesn't apply]
-```
-
-### Why This Matters
-
-- Shows respect for reviewer's time
-- Creates a clear audit trail of decisions
-- Prevents comments from being forgotten
-- Helps future reviewers understand the discussion
-
-### Example Workflow
-
-```bash
-# Get all review comments
-gh api repos/OWNER/REPO/pulls/PR_NUMBER/comments | jq -r '.[] | "ID: \(.id)\nBody: \(.body)\n---"'
-
-# Reply to each comment
-gh api repos/OWNER/REPO/pulls/PR_NUMBER/comments/COMMENT_ID/replies \
-  -X POST \
-  -f body="✅ **Fixed** - Implemented regex parsing as suggested."
-```
-
-## PR Merge Readiness Checklist
-
-**CRITICAL**: A PR is NOT ready for merge until ALL of the following are complete:
-
-### ✅ Before Declaring "Ready for Merge"
-
-- [ ] **All tests passing**
-  - Unit tests: `go test ./...`
-  - E2E tests: `./tests/run-tests.sh`
-  - CI checks: Green ✅
-
-- [ ] **All review comments addressed**
-  - Every comment has a reply
-  - Each reply indicates: Fixed / Acknowledged / Not Applicable
-  - No unresolved threads
-
-- [ ] **All TODO items completed**
-  - Check PR description for TODO lists
-  - Check PR comments for TODO lists
-  - Mark all checkboxes `[x]`
-  - Update status comment to reflect completion
-
-- [ ] **Code quality**
-  - No linting errors
-  - Code builds successfully
-  - All new code has tests
-
-### Common Mistakes to Avoid
-
-❌ **DON'T say "Ready for merge" if:**
-- Tests are passing BUT review comments aren't replied to
-- Review comments are replied to BUT TODOs aren't checked off
-- Everything looks good BUT you haven't actually verified each item
-
-✅ **DO verify each item explicitly:**
-```bash
-# Check tests
-go test ./...
-./tests/run-tests.sh
-gh pr checks PR_NUMBER
-
-# Check review comments
-gh pr view PR_NUMBER --json reviews
-gh api repos/OWNER/REPO/pulls/PR_NUMBER/comments
-
-# Check TODOs in PR comments
-gh pr view PR_NUMBER --comments | grep -E "\- \[ \]"
-```
+---
 
 ## Summary
 
-**Golden Rule**: If you fix a bug, write a test that would have caught it.
+### Golden Rules
 
-**Test Quality**: Verify actual state, not just command success.
+1. **Read PR-PROCESS.md** - Follow the complete process, no shortcuts
+2. **Unit tests first** - Debug bugs with focused unit tests
+3. **Focus on correctness** - Don't just make tests pass
+4. **Every bug needs a test** - That would have caught it
+5. **No ephemeral docs** - Use code comments and PR descriptions
+6. **Reply to all comments** - See PR-PROCESS.md for details
 
-**Coverage**: Test edge cases, especially untrusted keys and multi-user scenarios.
+### Quick Links
 
-**CI/CD**: All tests run on PRs automatically. No exceptions.
-
-**PR Reviews**: Reply to ALL review comments, acknowledging what was done.
-
-**Merge Readiness**: Check ALL items (tests, comments, TODOs) before declaring ready.
+- 📋 **[PR-PROCESS.md](PR-PROCESS.md)** - Complete PR submission and review process
+- 📝 **[.github/pull_request_template.md](.github/pull_request_template.md)** - PR template with checklists
 
 ---
 
-## Pull Request Process
-
-For the complete, detailed pull request submission and review process, see:
-
-**📋 [PR-PROCESS.md](PR-PROCESS.md)**
-
-This document covers:
-- Step 0: Prerequisites before submission
-- Steps 1-8: Complete review and merge process  
-- When to iterate back to testing
-- TODO tracking and comment replies
-- Final verification checklist
-
-**Quick Reference:**
-- Use `.github/pull_request_template.md` for all PRs
-- Follow PR-PROCESS.md step-by-step
-- No PR is ready for merge until ALL steps complete
+**Remember**: Understanding and following the PR process in PR-PROCESS.md is not optional. It's a requirement for all contributions.
