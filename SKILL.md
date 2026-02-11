@@ -361,39 +361,47 @@ assert_success "$SECRET_CLI vault create dev"
 # What about duplicate names? Invalid characters? Permissions?
 ```
 
-## Documentation Requirements
+## Documentation Policy
 
-### For Each Bug Fix
+**IMPORTANT**: Do NOT add ephemeral, bug-specific documentation files to the repository.
 
-Create or update documentation:
+### What NOT to Add
 
-1. **BUGFIX-*.md** - Detailed analysis of the bug
-2. **TEST-COVERAGE-ANALYSIS.md** - Why tests didn't catch it
-3. **Code comments** - Explain the fix and test
+❌ **Avoid creating these types of files**:
+- `BUGFIX-*.md` - Detailed analysis of specific bugs
+- `TEST-COVERAGE-ANALYSIS.md` - Why tests didn't catch a specific bug  
+- `SUMMARY.md` - Summaries of specific PRs or bug fixes
+- Any other documentation that describes a specific bug or fix
 
-### Bug Fix Documentation Template
+### Why
 
-```markdown
-# Bug Fix: <Brief Title>
+- Bug-specific documentation becomes stale and clutters the repository
+- The information belongs in:
+  - **PR descriptions** - Context for reviewers
+  - **Commit messages** - Permanent git history
+  - **Code comments** - Inline explanations
+  - **This SKILL.md** - General patterns and requirements
 
-## Issue
-<What was broken>
+### What TO Document
 
-## Root Cause
-<Why it was broken>
+✅ **DO add**:
+- **Code comments** - Explain WHY the code does something, especially for bug fixes
+- **Test comments** - Explain what bug a regression test prevents
+- **SKILL.md updates** - Add general patterns learned from the bug
 
-## Impact
-<Who was affected and how>
+### Example
 
-## Fix
-<What was changed>
+Instead of creating `BUGFIX-untrusted-keys.md`, add a comment in the code:
 
-## Testing
-<How we verify it's fixed>
-
-## Lessons Learned
-<What we learned for future development>
+```go
+// Set trust-model to always to handle untrusted GPG keys.
+// Without this, GPG refuses to encrypt to untrusted keys in batch mode,
+// causing silent re-encryption failures when adding new vault members.
+existingOpts := os.Getenv("PASSWORD_STORE_GPG_OPTS")
+gpgOpts := "--trust-model always"
 ```
+
+And update this SKILL.md with the general pattern if it's broadly applicable.
 
 ## Quick Reference
 

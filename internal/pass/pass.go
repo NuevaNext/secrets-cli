@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -23,9 +24,15 @@ func New(storeDir string) *Pass {
 // run executes a pass command with PASSWORD_STORE_DIR set
 func (p *Pass) run(args ...string) (string, error) {
 	cmd := exec.Command("pass", args...)
+	// Preserve existing PASSWORD_STORE_GPG_OPTS and append --trust-model always
+	existingOpts := os.Getenv("PASSWORD_STORE_GPG_OPTS")
+	gpgOpts := "--trust-model always"
+	if existingOpts != "" {
+		gpgOpts = existingOpts + " " + gpgOpts
+	}
 	cmd.Env = append(os.Environ(),
 		"PASSWORD_STORE_DIR="+p.StoreDir,
-		"PASSWORD_STORE_GPG_OPTS=--trust-model always",
+		"PASSWORD_STORE_GPG_OPTS="+gpgOpts,
 	)
 
 	var stdout, stderr bytes.Buffer
@@ -46,9 +53,15 @@ func (p *Pass) run(args ...string) (string, error) {
 // runWithStdin executes a pass command with stdin input
 func (p *Pass) runWithStdin(input string, args ...string) (string, error) {
 	cmd := exec.Command("pass", args...)
+	// Preserve existing PASSWORD_STORE_GPG_OPTS and append --trust-model always
+	existingOpts := os.Getenv("PASSWORD_STORE_GPG_OPTS")
+	gpgOpts := "--trust-model always"
+	if existingOpts != "" {
+		gpgOpts = existingOpts + " " + gpgOpts
+	}
 	cmd.Env = append(os.Environ(),
 		"PASSWORD_STORE_DIR="+p.StoreDir,
-		"PASSWORD_STORE_GPG_OPTS=--trust-model always",
+		"PASSWORD_STORE_GPG_OPTS="+gpgOpts,
 	)
 	cmd.Stdin = strings.NewReader(input)
 
@@ -204,17 +217,14 @@ func (p *Pass) VerifyEncryption(secretName string, expectedGPGIDs []string) erro
 
 	output := stdout.String()
 
-	// Extract key IDs from output (format: ":pubkey enc packet: ... keyid KEYID")
+	// Extract key IDs from output using regex (more robust than string splitting)
+	keyIDRegex := regexp.MustCompile(`keyid\s+([A-F0-9]+)`)
+	matches := keyIDRegex.FindAllStringSubmatch(output, -1)
+
 	var foundKeyIDs []string
-	for _, line := range strings.Split(output, "\n") {
-		if strings.Contains(line, ":pubkey enc packet:") && strings.Contains(line, "keyid") {
-			parts := strings.Fields(line)
-			for i, part := range parts {
-				if part == "keyid" && i+1 < len(parts) {
-					foundKeyIDs = append(foundKeyIDs, parts[i+1])
-					break
-				}
-			}
+	for _, match := range matches {
+		if len(match) > 1 {
+			foundKeyIDs = append(foundKeyIDs, match[1])
 		}
 	}
 
@@ -222,20 +232,21 @@ func (p *Pass) VerifyEncryption(secretName string, expectedGPGIDs []string) erro
 		return fmt.Errorf("no encryption recipients found in %s", secretName)
 	}
 
-	// Get expected key IDs by querying GPG for each email
+	// Get expected key IDs by querying GPG for all emails in a single call (more efficient)
 	expectedKeyIDs := make(map[string]bool)
-	for _, gpgID := range expectedGPGIDs {
-		cmd := exec.Command("gpg", "--list-keys", "--with-colons", gpgID)
+	if len(expectedGPGIDs) > 0 {
+		args := append([]string{"--list-keys", "--with-colons"}, expectedGPGIDs...)
+		cmd := exec.Command("gpg", args...)
 		var out bytes.Buffer
 		cmd.Stdout = &out
 
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to get key info for %s: %w", gpgID, err)
+			return fmt.Errorf("failed to get key info for recipients: %w", err)
 		}
 
-		// Extract encryption subkey IDs (lines starting with "sub:" with capability "e")
+		// Extract encryption key IDs from both pub: and sub: lines with capability "e"
 		for _, line := range strings.Split(out.String(), "\n") {
-			if strings.HasPrefix(line, "sub:") {
+			if strings.HasPrefix(line, "pub:") || strings.HasPrefix(line, "sub:") {
 				fields := strings.Split(line, ":")
 				// Field 12 (index 11) contains key capabilities, field 5 (index 4) is the key ID
 				if len(fields) > 11 && strings.Contains(fields[11], "e") && len(fields) > 4 {
