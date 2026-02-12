@@ -275,7 +275,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if !forceSecret {
-		return fmt.Errorf("use --force to confirm deletion of secret: %s/%s", vaultName, secretName)
+		if isTerminal(os.Stdin) {
+			if !confirm(fmt.Sprintf("Are you sure you want to delete secret %s/%s?", vaultName, secretName)) {
+				return fmt.Errorf("deletion cancelled")
+			}
+		} else {
+			return fmt.Errorf("use --force to confirm deletion of secret: %s/%s", vaultName, secretName)
+		}
 	}
 
 	// Delete secret
