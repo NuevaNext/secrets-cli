@@ -69,7 +69,10 @@ called automatically by 'secrets-cli setup'.`,
 	RunE: runKeyImport,
 }
 
-var keyFile string
+var (
+	keyFile  string
+	forceKey bool
+)
 
 func init() {
 	rootCmd.AddCommand(keyCmd)
@@ -79,6 +82,7 @@ func init() {
 	keyCmd.AddCommand(keyImportCmd)
 
 	keyAddCmd.Flags().StringVar(&keyFile, "key-file", "", "Path to key file (optional)")
+	keyRemoveCmd.Flags().BoolVarP(&forceKey, "force", "f", false, "Force remove without confirmation")
 }
 
 func runKeyList(cmd *cobra.Command, args []string) error {
@@ -159,6 +163,16 @@ func runKeyAdd(cmd *cobra.Command, args []string) error {
 func runKeyRemove(cmd *cobra.Command, args []string) error {
 	secretsDir := GetSecretsDir()
 	email := args[0]
+
+	if !forceKey {
+		if isTerminal(os.Stdin) {
+			if !confirm(fmt.Sprintf("Are you sure you want to remove key for %s? Note: This does not revoke vault access.", email)) {
+				return fmt.Errorf("removal cancelled")
+			}
+		} else {
+			return fmt.Errorf("use --force to confirm removal of key: %s", email)
+		}
+	}
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)

@@ -289,7 +289,13 @@ func runVaultDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if !forceDelete {
-		return fmt.Errorf("use --force to confirm deletion of vault: %s", vaultName)
+		if isTerminal(os.Stdin) {
+			if !confirm(fmt.Sprintf("Are you sure you want to delete vault %s? This will permanently delete all secrets it contains.", vaultName)) {
+				return fmt.Errorf("deletion cancelled")
+			}
+		} else {
+			return fmt.Errorf("use --force to confirm deletion of vault: %s", vaultName)
+		}
 	}
 
 	if err := os.RemoveAll(vaultDir); err != nil {
@@ -360,6 +366,7 @@ func runVaultAddMember(cmd *cobra.Command, args []string) error {
 	}
 
 	// Re-encrypt secrets with new member
+	fmt.Printf("Re-encrypting secrets for vault %s...\n", vaultName)
 	storeDir := filepath.Join(vaultDir, ".password-store")
 	p := pass.New(storeDir)
 	if err := p.ReInit(vaultCfg.Members); err != nil {
@@ -429,6 +436,7 @@ func runVaultRemoveMember(cmd *cobra.Command, args []string) error {
 	}
 
 	// Re-encrypt secrets without removed member
+	fmt.Printf("Re-encrypting secrets for vault %s...\n", vaultName)
 	storeDir := filepath.Join(vaultDir, ".password-store")
 	p := pass.New(storeDir)
 	if err := p.ReInit(vaultCfg.Members); err != nil {
