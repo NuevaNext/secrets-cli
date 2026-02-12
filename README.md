@@ -35,6 +35,23 @@ chmod +x secrets-cli
 sudo mv secrets-cli /usr/local/bin/
 ```
 
+### Arch Linux (AUR)
+
+For Arch Linux users, secrets-cli is available in the [AUR](https://aur.archlinux.org/):
+
+```bash
+# Using yay
+yay -S secrets-cli-bin
+
+# Using paru
+paru -S secrets-cli-bin
+
+# Or manually
+git clone https://aur.archlinux.org/secrets-cli-bin.git
+cd secrets-cli-bin
+makepkg -si
+```
+
 ### Using Go Install
 
 ```bash
