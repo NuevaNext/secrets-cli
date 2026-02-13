@@ -289,7 +289,9 @@ func runVaultDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	if !forceDelete {
-		return fmt.Errorf("use --force to confirm deletion of vault: %s", vaultName)
+		if !confirm(fmt.Sprintf("Are you sure you want to delete vault %q and all its secrets?", vaultName)) {
+			return fmt.Errorf("use --force to confirm deletion of vault: %s", vaultName)
+		}
 	}
 
 	if err := os.RemoveAll(vaultDir); err != nil {
