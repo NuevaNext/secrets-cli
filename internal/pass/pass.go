@@ -206,44 +206,44 @@ func (p *Pass) ReInit(gpgIDs []string) error {
 // It uses a count-based approach which is more robust across GPG versions than
 // trying to match exact key IDs (which can vary in format).
 func (p *Pass) VerifyEncryption(secretName string, expectedGPGIDs []string) error {
-secretPath := filepath.Join(p.StoreDir, secretName+".gpg")
+	secretPath := filepath.Join(p.StoreDir, secretName+".gpg")
 
-// First, verify all expected GPG IDs exist in the keyring
-for _, gpgID := range expectedGPGIDs {
-cmd := exec.Command("gpg", "--list-keys", gpgID)
-if err := cmd.Run(); err != nil {
-return fmt.Errorf("GPG ID %s not found in keyring: %w", gpgID, err)
-}
-}
+	// First, verify all expected GPG IDs exist in the keyring
+	for _, gpgID := range expectedGPGIDs {
+		cmd := exec.Command("gpg", "--list-keys", "--", gpgID)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("GPG ID %s not found in keyring: %w", gpgID, err)
+		}
+	}
 
-// Count recipients in the encrypted file
-cmd := exec.Command("gpg", "--list-packets", secretPath)
-var stdout bytes.Buffer
-cmd.Stdout = &stdout
+	// Count recipients in the encrypted file
+	cmd := exec.Command("gpg", "--list-packets", "--", secretPath)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
 
-if err := cmd.Run(); err != nil {
-return fmt.Errorf("failed to list packets: %w", err)
-}
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to list packets: %w", err)
+	}
 
-// Count how many encryption recipients are in the file
-// Each ":pubkey enc packet:" line represents one recipient
-keyIDRegex := regexp.MustCompile(`(?i):pubkey enc packet:`)
-matches := keyIDRegex.FindAllString(stdout.String(), -1)
-recipientCount := len(matches)
+	// Count how many encryption recipients are in the file
+	// Each ":pubkey enc packet:" line represents one recipient
+	keyIDRegex := regexp.MustCompile(`(?i):pubkey enc packet:`)
+	matches := keyIDRegex.FindAllString(stdout.String(), -1)
+	recipientCount := len(matches)
 
-if recipientCount == 0 {
-return fmt.Errorf("no encryption recipients found in %s", secretName)
-}
+	if recipientCount == 0 {
+		return fmt.Errorf("no encryption recipients found in %s", secretName)
+	}
 
-// Verify the count matches
-// Since we know pass was asked to encrypt to exactly these GPG IDs,
-// if the recipient count matches, encryption was successful
-if recipientCount != len(expectedGPGIDs) {
-return fmt.Errorf("secret %s is encrypted for %d recipients, but expected %d (GPG IDs: %v)",
-secretName, recipientCount, len(expectedGPGIDs), expectedGPGIDs)
-}
+	// Verify the count matches
+	// Since we know pass was asked to encrypt to exactly these GPG IDs,
+	// if the recipient count matches, encryption was successful
+	if recipientCount != len(expectedGPGIDs) {
+		return fmt.Errorf("secret %s is encrypted for %d recipients, but expected %d (GPG IDs: %v)",
+			secretName, recipientCount, len(expectedGPGIDs), expectedGPGIDs)
+	}
 
-return nil
+	return nil
 }
 
 func (p *Pass) GetGPGIDs() ([]string, error) {

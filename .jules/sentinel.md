@@ -1,3 +1,8 @@
+## 2026-02-15 - Inconsistent Input Validation across CLI Commands
+**Vulnerability:** While `validateName` was implemented, it was inconsistently applied across commands. `init`, `setup`, `key remove`, `vault info/delete/add-member/remove-member`, and all `secrets` commands lacked validation, exposing them to path traversal and argument injection.
+**Learning:** Security controls must be applied systemically to all entry points. Hierarchical inputs (like secret paths) require specialized validation (`validateSecretName`) that balances organizational needs with security (allowing `/` but preventing `//`, `..`, etc.).
+**Prevention:** Use a centralized validation strategy and ensure every CLI command that accepts user-provided names or paths invokes the appropriate validator immediately after argument parsing.
+
 ## 2026-02-01 - Argument Injection in CLI Wrappers
 **Vulnerability:** User-controlled positional arguments (like emails or secret names) starting with hyphens could be interpreted as flags by underlying CLI tools (`gpg`, `pass`), leading to argument injection.
 **Learning:** Wrapping external CLI tools requires careful handling of positional arguments. Even if `exec.Command` prevents shell injection, it doesn't prevent the target binary from misinterpreting arguments as flags.

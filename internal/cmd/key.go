@@ -159,6 +159,9 @@ func runKeyAdd(cmd *cobra.Command, args []string) error {
 func runKeyRemove(cmd *cobra.Command, args []string) error {
 	secretsDir := GetSecretsDir()
 	email := args[0]
+	if err := validateName(email); err != nil {
+		return err
+	}
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
