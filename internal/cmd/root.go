@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -182,4 +183,28 @@ func validateName(name string) error {
 		return fmt.Errorf("invalid name: %s (contains illegal characters or path traversal)", name)
 	}
 	return nil
+}
+
+// isTerminal checks if the file descriptor is a terminal
+func isTerminal(f *os.File) bool {
+	stat, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
+}
+
+// confirm prompts the user for confirmation in interactive terminals
+func confirm(message string) bool {
+	if !isTerminal(os.Stdin) {
+		return false
+	}
+	fmt.Printf("%s [y/N] ", message)
+	reader := bufio.NewReader(os.Stdin)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false
+	}
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes"
 }
