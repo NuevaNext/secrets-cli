@@ -113,9 +113,10 @@ func init() {
 }
 
 func runList(cmd *cobra.Command, args []string) error {
-	secretsDir := GetSecretsDir()
-	email := GetUserEmail()
-	vaultName := args[0]
+	secretsDir, email, vaultName := GetSecretsDir(), GetUserEmail(), args[0]
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
@@ -161,10 +162,13 @@ func runList(cmd *cobra.Command, args []string) error {
 }
 
 func runGet(cmd *cobra.Command, args []string) error {
-	secretsDir := GetSecretsDir()
-	email := GetUserEmail()
-	vaultName := args[0]
-	secretName := args[1]
+	secretsDir, email, vaultName, secretName := GetSecretsDir(), GetUserEmail(), args[0], args[1]
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateSecretName(secretName); err != nil {
+		return err
+	}
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
@@ -199,10 +203,13 @@ func runGet(cmd *cobra.Command, args []string) error {
 }
 
 func runSet(cmd *cobra.Command, args []string) error {
-	secretsDir := GetSecretsDir()
-	email := GetUserEmail()
-	vaultName := args[0]
-	secretName := args[1]
+	secretsDir, email, vaultName, secretName := GetSecretsDir(), GetUserEmail(), args[0], args[1]
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateSecretName(secretName); err != nil {
+		return err
+	}
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
@@ -254,10 +261,13 @@ func runSet(cmd *cobra.Command, args []string) error {
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
-	secretsDir := GetSecretsDir()
-	email := GetUserEmail()
-	vaultName := args[0]
-	secretName := args[1]
+	secretsDir, email, vaultName, secretName := GetSecretsDir(), GetUserEmail(), args[0], args[1]
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateSecretName(secretName); err != nil {
+		return err
+	}
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
@@ -291,11 +301,16 @@ func runDelete(cmd *cobra.Command, args []string) error {
 }
 
 func runRename(cmd *cobra.Command, args []string) error {
-	secretsDir := GetSecretsDir()
-	email := GetUserEmail()
-	vaultName := args[0]
-	oldName := args[1]
-	newName := args[2]
+	secretsDir, email, vaultName, oldName, newName := GetSecretsDir(), GetUserEmail(), args[0], args[1], args[2]
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateSecretName(oldName); err != nil {
+		return err
+	}
+	if err := validateSecretName(newName); err != nil {
+		return err
+	}
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
@@ -329,11 +344,16 @@ func runRename(cmd *cobra.Command, args []string) error {
 }
 
 func runCopy(cmd *cobra.Command, args []string) error {
-	secretsDir := GetSecretsDir()
-	email := GetUserEmail()
-	srcVault := args[0]
-	secretName := args[1]
-	dstVault := args[2]
+	secretsDir, email, srcVault, secretName, dstVault := GetSecretsDir(), GetUserEmail(), args[0], args[1], args[2]
+	if err := validateName(srcVault); err != nil {
+		return err
+	}
+	if err := validateSecretName(secretName); err != nil {
+		return err
+	}
+	if err := validateName(dstVault); err != nil {
+		return err
+	}
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
