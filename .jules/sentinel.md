@@ -6,3 +6,7 @@
 **Vulnerability:** Path traversal in `key add` and `vault create` commands allowed arbitrary file writes via manipulated email or vault names. Additionally, missing `--` separators in GPG/Pass wrappers allowed argument injection.
 **Learning:** CLI tools that construct file paths from user arguments are susceptible to traversal if not explicitly sanitized. Positional arguments starting with hyphens can also be misinterpreted as flags by underlying tools.
 **Prevention:** Use a centralized validation function to reject dangerous characters (`..`, `/`, `\`) and leading hyphens in names. Always use the `--` delimiter to separate options from positional arguments when calling external binaries.
+## 2026-02-16 - Path Traversal in Secret Names
+**Vulnerability:** While vault names were validated, secret names were not, allowing potential path traversal (e.g., `../../file`) even if underlying tools had some protection.
+**Learning:** Defense in depth requires validation at the application level, even if delegated tools (like `pass`) have their own protections. Secret names need a specific validator that allows slashes for organization but rejects traversal patterns.
+**Prevention:** Implement `validateSecretName` to allow single slashes but reject `..`, leading/trailing slashes, and double slashes. Apply this validation to all commands handling secret names.
