@@ -47,6 +47,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 	secretsDir := GetSecretsDir()
 	email := GetUserEmail()
 
+	if err := validateName(email); err != nil {
+		return err
+	}
+
 	// Check if already initialized
 	if _, err := os.Stat(secretsDir); !os.IsNotExist(err) {
 		return fmt.Errorf("secrets directory already exists: %s. Remove it first or use a different path", secretsDir)

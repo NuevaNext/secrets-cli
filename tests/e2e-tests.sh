@@ -12,8 +12,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE="/workspace"
-SECRET_CLI="${WORKSPACE}/secrets-cli"
+WORKSPACE="${WORKSPACE:-/workspace}"
+SECRET_CLI="${SECRET_CLI:-${WORKSPACE}/secrets-cli}"
 
 # Source test utilities
 source "${SCRIPT_DIR}/test-utils.sh"
