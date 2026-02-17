@@ -246,6 +246,10 @@ func runVaultInfo(cmd *cobra.Command, args []string) error {
 	secretsDir := GetSecretsDir()
 	vaultName := args[0]
 
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+
 	vaultDir := config.GetVaultDir(secretsDir, vaultName)
 	if _, err := os.Stat(vaultDir); os.IsNotExist(err) {
 		return fmt.Errorf("vault not found: %s", vaultName)
@@ -283,6 +287,10 @@ func runVaultDelete(cmd *cobra.Command, args []string) error {
 	secretsDir := GetSecretsDir()
 	vaultName := args[0]
 
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+
 	vaultDir := config.GetVaultDir(secretsDir, vaultName)
 	if _, err := os.Stat(vaultDir); os.IsNotExist(err) {
 		return fmt.Errorf("vault not found: %s", vaultName)
@@ -305,6 +313,13 @@ func runVaultAddMember(cmd *cobra.Command, args []string) error {
 	email := GetUserEmail()
 	vaultName := args[0]
 	memberEmail := args[1]
+
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateName(memberEmail); err != nil {
+		return fmt.Errorf("invalid member email: %w", err)
+	}
 
 	vaultDir := config.GetVaultDir(secretsDir, vaultName)
 	if _, err := os.Stat(vaultDir); os.IsNotExist(err) {
@@ -377,6 +392,13 @@ func runVaultRemoveMember(cmd *cobra.Command, args []string) error {
 	email := GetUserEmail()
 	vaultName := args[0]
 	memberEmail := args[1]
+
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateName(memberEmail); err != nil {
+		return fmt.Errorf("invalid member email: %w", err)
+	}
 
 	vaultDir := config.GetVaultDir(secretsDir, vaultName)
 	if _, err := os.Stat(vaultDir); os.IsNotExist(err) {
