@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -182,4 +183,21 @@ func validateName(name string) error {
 		return fmt.Errorf("invalid name: %s (contains illegal characters or path traversal)", name)
 	}
 	return nil
+}
+
+// Confirm asks the user for confirmation.
+// It returns true if the user enters 'y' or 'yes', false otherwise.
+// If stdin is not a terminal, it returns false without prompting.
+func Confirm(message string) bool {
+	// Check if stdin is a terminal
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		return false
+	}
+
+	fmt.Printf("%s [y/N] ", message)
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = strings.ToLower(strings.TrimSpace(input))
+	return input == "y" || input == "yes"
 }
