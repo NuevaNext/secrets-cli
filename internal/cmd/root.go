@@ -183,3 +183,20 @@ func validateName(name string) error {
 	}
 	return nil
 }
+
+// validateSecretName ensures a secret name is safe to use in file paths and command arguments
+// while allowing forward slashes for organization.
+func validateSecretName(name string) error {
+	if name == "" {
+		return fmt.Errorf("secret name cannot be empty")
+	}
+	// Prevent path traversal and argument injection
+	// We allow / but not //, leading /, or trailing /
+	if strings.Contains(name, "..") || strings.Contains(name, "\\") || strings.HasPrefix(name, "-") {
+		return fmt.Errorf("invalid secret name: %s (contains illegal characters or path traversal)", name)
+	}
+	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") || strings.Contains(name, "//") {
+		return fmt.Errorf("invalid secret name: %s (cannot start/end with slash or contain consecutive slashes)", name)
+	}
+	return nil
+}
