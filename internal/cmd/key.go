@@ -69,7 +69,10 @@ called automatically by 'secrets-cli setup'.`,
 	RunE: runKeyImport,
 }
 
-var keyFile string
+var (
+	keyFile  string
+	forceKey bool
+)
 
 func init() {
 	rootCmd.AddCommand(keyCmd)
@@ -79,6 +82,7 @@ func init() {
 	keyCmd.AddCommand(keyImportCmd)
 
 	keyAddCmd.Flags().StringVar(&keyFile, "key-file", "", "Path to key file (optional)")
+	keyRemoveCmd.Flags().BoolVarP(&forceKey, "force", "f", false, "Force remove without confirmation")
 }
 
 func runKeyList(cmd *cobra.Command, args []string) error {
@@ -169,6 +173,10 @@ func runKeyRemove(cmd *cobra.Command, args []string) error {
 
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 		return fmt.Errorf("no key found for %s", email)
+	}
+
+	if !Confirm(fmt.Sprintf("Are you sure you want to remove the public key for %s?", email), forceKey) {
+		return fmt.Errorf("removal of key for %s cancelled", email)
 	}
 
 	if err := os.Remove(keyPath); err != nil {
