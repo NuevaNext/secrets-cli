@@ -246,6 +246,10 @@ func runVaultInfo(cmd *cobra.Command, args []string) error {
 	secretsDir := GetSecretsDir()
 	vaultName := args[0]
 
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+
 	vaultDir := config.GetVaultDir(secretsDir, vaultName)
 	if _, err := os.Stat(vaultDir); os.IsNotExist(err) {
 		return fmt.Errorf("vault not found: %s", vaultName)

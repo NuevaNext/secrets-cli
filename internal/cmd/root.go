@@ -183,3 +183,16 @@ func validateName(name string) error {
 	}
 	return nil
 }
+
+// validateSecretName ensures a secret path is safe to use
+func validateSecretName(name string) error {
+	if name == "" {
+		return fmt.Errorf("secret name cannot be empty")
+	}
+	// Allow slashes for organization, but prevent path traversal and other issues
+	if strings.Contains(name, "..") || strings.Contains(name, "\\") || strings.Contains(name, "//") ||
+		strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") || strings.HasPrefix(name, "-") {
+		return fmt.Errorf("invalid secret name: %s", name)
+	}
+	return nil
+}
