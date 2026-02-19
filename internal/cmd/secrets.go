@@ -274,7 +274,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Access denied: you are not a member of vault %s", vaultName)
 	}
 
-	if !forceSecret {
+	if !Confirm(fmt.Sprintf("Are you sure you want to permanently delete secret %q from vault %q?", secretName, vaultName), forceSecret) {
 		return fmt.Errorf("use --force to confirm deletion of secret: %s/%s", vaultName, secretName)
 	}
 
