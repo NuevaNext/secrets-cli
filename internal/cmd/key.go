@@ -171,6 +171,9 @@ func runKeyRemove(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no key found for %s", email)
 	}
 
+	if !Confirm(fmt.Sprintf("Are you sure you want to remove the public key for %s?", email), false) {
+		return fmt.Errorf("removal cancelled")
+	}
 	if err := os.Remove(keyPath); err != nil {
 		return fmt.Errorf("failed to remove key: %w", err)
 	}
