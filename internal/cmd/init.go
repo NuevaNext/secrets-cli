@@ -35,6 +35,13 @@ func init() {
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
+	email := GetUserEmail()
+	if email != "" {
+		if err := validateName(email); err != nil {
+			return err
+		}
+	}
+
 	// Require git repository for proper secrets preservation
 	gitRoot, err := RequireGitRepository()
 	if err != nil {
@@ -45,7 +52,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	secretsDir := GetSecretsDir()
-	email := GetUserEmail()
 
 	// Check if already initialized
 	if _, err := os.Stat(secretsDir); !os.IsNotExist(err) {

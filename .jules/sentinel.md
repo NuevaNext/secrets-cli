@@ -1,3 +1,7 @@
+## 2026-02-05 - Comprehensive Input Validation for Secrets
+**Vulnerability:** Many CLI commands lacked input validation for secret names, vault names, and emails, creating risks of path traversal and argument injection.
+**Learning:** Even if core functions have some validation, it must be applied consistently at all entry points (CLI command handlers) to ensure no unvalidated data reaches sensitive operations.
+**Prevention:** Use specialized validation functions like `validateSecretName` (allowing slashes) and `validateName` (rejecting slashes) consistently across all command handlers.
 ## 2026-02-01 - Argument Injection in CLI Wrappers
 **Vulnerability:** User-controlled positional arguments (like emails or secret names) starting with hyphens could be interpreted as flags by underlying CLI tools (`gpg`, `pass`), leading to argument injection.
 **Learning:** Wrapping external CLI tools requires careful handling of positional arguments. Even if `exec.Command` prevents shell injection, it doesn't prevent the target binary from misinterpreting arguments as flags.
