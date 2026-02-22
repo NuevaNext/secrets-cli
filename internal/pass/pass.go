@@ -210,14 +210,14 @@ secretPath := filepath.Join(p.StoreDir, secretName+".gpg")
 
 // First, verify all expected GPG IDs exist in the keyring
 for _, gpgID := range expectedGPGIDs {
-cmd := exec.Command("gpg", "--list-keys", gpgID)
+cmd := exec.Command("gpg", "--list-keys", "--", gpgID)
 if err := cmd.Run(); err != nil {
 return fmt.Errorf("GPG ID %s not found in keyring: %w", gpgID, err)
 }
 }
 
 // Count recipients in the encrypted file
-cmd := exec.Command("gpg", "--list-packets", secretPath)
+cmd := exec.Command("gpg", "--list-packets", "--", secretPath)
 var stdout bytes.Buffer
 cmd.Stdout = &stdout
 

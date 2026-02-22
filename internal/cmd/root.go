@@ -173,6 +173,7 @@ func IsVerbose() bool {
 }
 
 // validateName ensures a name is safe to use in file paths and command arguments
+// (e.g. vault names, emails)
 func validateName(name string) error {
 	if name == "" {
 		return fmt.Errorf("name cannot be empty")
@@ -180,6 +181,24 @@ func validateName(name string) error {
 	// Prevent path traversal and argument injection
 	if strings.Contains(name, "..") || strings.ContainsAny(name, "/\\") || strings.HasPrefix(name, "-") {
 		return fmt.Errorf("invalid name: %s (contains illegal characters or path traversal)", name)
+	}
+	return nil
+}
+
+// validateSecretName ensures a secret name is safe to use.
+// It allows slashes for organization but prevents traversal and argument injection.
+func validateSecretName(name string) error {
+	if name == "" {
+		return fmt.Errorf("secret name cannot be empty")
+	}
+	// Prevent path traversal, backslashes, double slashes, and leading/trailing slashes
+	if strings.Contains(name, "..") ||
+		strings.Contains(name, "\\") ||
+		strings.Contains(name, "//") ||
+		strings.HasPrefix(name, "/") ||
+		strings.HasSuffix(name, "/") ||
+		strings.HasPrefix(name, "-") {
+		return fmt.Errorf("invalid secret name: %s (must not contain '..', '\\', '//', or start/end with '/')", name)
 	}
 	return nil
 }

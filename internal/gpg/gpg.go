@@ -80,7 +80,7 @@ func (g *GPG) ExportPublicKeyToFile(email, filePath string) error {
 
 // ImportKey imports a key from a file
 func (g *GPG) ImportKey(keyPath string) error {
-	_, err := g.run("--import", keyPath)
+	_, err := g.run("--import", "--", keyPath)
 	return err
 }
 
