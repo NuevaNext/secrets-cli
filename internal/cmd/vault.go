@@ -306,6 +306,13 @@ func runVaultAddMember(cmd *cobra.Command, args []string) error {
 	vaultName := args[0]
 	memberEmail := args[1]
 
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateName(memberEmail); err != nil {
+		return err
+	}
+
 	vaultDir := config.GetVaultDir(secretsDir, vaultName)
 	if _, err := os.Stat(vaultDir); os.IsNotExist(err) {
 		return fmt.Errorf("vault not found: %s", vaultName)
