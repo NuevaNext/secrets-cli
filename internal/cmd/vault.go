@@ -69,7 +69,7 @@ var vaultDeleteCmd = &cobra.Command{
 	Short: "Delete a vault and all its secrets",
 	Long: `Permanently delete a vault and all secrets it contains.
 
-This action cannot be undone. Use --force to confirm.`,
+This action cannot be undone. Prompts for confirmation unless --force is used.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runVaultDelete,
 }
@@ -288,8 +288,11 @@ func runVaultDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("vault not found: %s", vaultName)
 	}
 
-	if !forceDelete {
-		return fmt.Errorf("use --force to confirm deletion of vault: %s", vaultName)
+	if !Confirm(fmt.Sprintf("Permanently delete vault %q and all its secrets?", vaultName), forceDelete) {
+		if !forceDelete && !IsTerminal() {
+			return fmt.Errorf("use --force to confirm deletion of vault: %s", vaultName)
+		}
+		return fmt.Errorf("operation cancelled")
 	}
 
 	if err := os.RemoveAll(vaultDir); err != nil {

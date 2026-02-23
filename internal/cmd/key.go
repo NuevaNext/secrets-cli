@@ -54,6 +54,7 @@ var keyRemoveCmd = &cobra.Command{
 	Short: "Remove a public key from the store",
 	Long: `Remove a team member's public key from the secrets repository.
 
+Prompts for confirmation unless --force is used.
 Note: This does not revoke access to vaults. Use 'vault remove-member' first.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runKeyRemove,
@@ -69,7 +70,10 @@ called automatically by 'secrets-cli setup'.`,
 	RunE: runKeyImport,
 }
 
-var keyFile string
+var (
+	keyFile  string
+	forceKey bool
+)
 
 func init() {
 	rootCmd.AddCommand(keyCmd)
@@ -79,6 +83,7 @@ func init() {
 	keyCmd.AddCommand(keyImportCmd)
 
 	keyAddCmd.Flags().StringVar(&keyFile, "key-file", "", "Path to key file (optional)")
+	keyRemoveCmd.Flags().BoolVarP(&forceKey, "force", "f", false, "Force remove without confirmation")
 }
 
 func runKeyList(cmd *cobra.Command, args []string) error {
@@ -169,6 +174,13 @@ func runKeyRemove(cmd *cobra.Command, args []string) error {
 
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 		return fmt.Errorf("no key found for %s", email)
+	}
+
+	if !Confirm(fmt.Sprintf("Permanently remove public key for %q?", email), forceKey) {
+		if !forceKey && !IsTerminal() {
+			return fmt.Errorf("use --force to confirm removal of key for %s", email)
+		}
+		return fmt.Errorf("operation cancelled")
 	}
 
 	if err := os.Remove(keyPath); err != nil {

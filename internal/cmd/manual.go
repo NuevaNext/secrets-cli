@@ -63,7 +63,8 @@ COMMANDS
         number of secrets.
 
     vault delete <vault>
-        Delete a vault and all its secrets. Requires --force flag.
+        Delete a vault and all its secrets. Prompts for confirmation
+        unless --force flag is used.
 
         secrets-cli vault delete old-vault --force
 
@@ -90,8 +91,11 @@ COMMANDS
         secrets-cli key add bob@example.com --key-file bob.asc
 
     key remove <email>
-        Remove a public key from the store. Note: this does not revoke
-        vault access. Use 'vault remove-member' first.
+        Remove a public key from the store. Prompts for confirmation
+        unless --force flag is used.
+
+        Note: this does not revoke vault access. Use 'vault remove-member'
+        first.
 
     key import
         Import all stored public keys into your local GPG keyring.
@@ -115,7 +119,8 @@ COMMANDS
         echo "secret123" | secrets-cli set dev api/key
 
     delete <vault> <secret>
-        Delete a secret. Requires --force flag.
+        Delete a secret. Prompts for confirmation unless --force flag
+        is used.
 
         secrets-cli delete dev old/secret --force
 
