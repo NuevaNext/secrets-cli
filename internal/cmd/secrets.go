@@ -58,7 +58,7 @@ var deleteCmd = &cobra.Command{
 	Short:   "Permanently delete a secret",
 	Long: `Permanently delete a secret from a vault.
 
-This action cannot be undone. Use --force to confirm.
+This action cannot be undone. Prompts for confirmation unless --force is used.
 
 Example:
   secrets-cli delete dev temp/test-secret --force`,
@@ -288,8 +288,11 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Access denied: you are not a member of vault %s", vaultName)
 	}
 
-	if !forceSecret {
-		return fmt.Errorf("use --force to confirm deletion of secret: %s/%s", vaultName, secretName)
+	if !Confirm(fmt.Sprintf("Permanently delete secret %q from vault %q?", secretName, vaultName), forceSecret) {
+		if !forceSecret && !IsTerminal() {
+			return fmt.Errorf("use --force to confirm deletion of secret: %s/%s", vaultName, secretName)
+		}
+		return fmt.Errorf("operation cancelled")
 	}
 
 	// Delete secret
