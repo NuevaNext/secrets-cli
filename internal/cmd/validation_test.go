@@ -17,6 +17,7 @@ func TestValidateName(t *testing.T) {
 		{"slash in name", "dev/prod", true},
 		{"backslash in name", "dev\\prod", true},
 		{"leading hyphen", "-flag", true},
+		{"contains dotdot", "name..with..dots", true},
 	}
 
 	for _, tt := range tests {
@@ -43,6 +44,7 @@ func TestValidateSecretName(t *testing.T) {
 		{"leading slash", "/test", true},
 		{"trailing slash", "test/", true},
 		{"leading hyphen", "-flag", true},
+		{"contains dotdot", "secret..name", true},
 	}
 
 	for _, tt := range tests {
