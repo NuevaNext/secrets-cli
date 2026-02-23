@@ -37,7 +37,7 @@ sudo mv secrets-cli /usr/local/bin/
 
 ### Arch Linux (AUR)
 
-For Arch Linux users, secrets-cli is available in the [AUR](https://aur.archlinux.org/):
+For Arch Linux users, secrets-cli is available from the AUR as [`secrets-cli-bin`](https://aur.archlinux.org/packages/secrets-cli-bin):
 
 ```bash
 # Using yay
