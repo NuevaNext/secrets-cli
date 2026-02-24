@@ -11,3 +11,8 @@
 **Vulnerability:** Command handlers for secret operations (`get`, `set`) and vault member management (`add-member`) were missing input validation, potentially allowing path traversal. Additionally, some internal GPG/Pass calls lacked the `--` separator, risking argument injection.
 **Learning:** Even with existing validation functions like `validateName`, it is easy to miss applying them to new command handlers or specific arguments like secret paths that require different rules (e.g., allowing slashes).
 **Prevention:** Apply `validateName` or `validateSecretName` to all user-controlled positional arguments. Ensure all CLI wrappers use the `--` separator before positional arguments to prevent them from being interpreted as flags.
+
+## 2026-02-24 - Comprehensive Input Validation Across All CLI Commands
+**Vulnerability:** Multiple command handlers (`list`, `delete`, `rename`, `copy`, `vault info`, `vault delete`, `vault remove-member`, `key remove`, `export`, `sync`, `init`, `setup`) were missing input validation for vault names, secret names, or member emails, risking path traversal.
+**Learning:** Security validation must be applied comprehensively to all entry points, not just the most obvious ones (like `get`/`set`). Even helper commands like `init` or `setup` can be vulnerable if they use user-provided data to construct paths.
+**Prevention:** Perform a comprehensive audit of all command handlers to ensure `validateName` or `validateSecretName` is applied to every user-controlled argument used in file system operations.
