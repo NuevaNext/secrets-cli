@@ -19,7 +19,33 @@ if [ -f "$SECRETS_DIR/traversed.asc" ]; then
     rm -rf "$SECRETS_DIR"
     exit 1
 else
-    echo "Path traversal failed"
-    rm -rf "$SECRETS_DIR"
-    exit 0
+    echo "Path traversal failed (expected)"
 fi
+
+echo "Attempting path traversal in 'vault delete'..."
+mkdir -p "$SECRETS_DIR/vaults"
+mkdir -p "$SECRETS_DIR/dangerous"
+./secrets-cli vault delete "../dangerous" --force --secrets-dir "$SECRETS_DIR" 2>&1 | grep "invalid name"
+if [ $? -eq 0 ]; then
+    echo "Path traversal in 'vault delete' failed (expected)"
+else
+    echo "VULNERABILITY CONFIRMED: Path traversal in 'vault delete' successful!"
+    rm -rf "$SECRETS_DIR"
+    exit 1
+fi
+
+echo "Attempting path traversal in 'copy' (new-name flag)..."
+mkdir -p "$SECRETS_DIR/vaults/src"
+mkdir -p "$SECRETS_DIR/vaults/dst"
+./secrets-cli copy "src" "secret" "dst" --new-name "../new" --secrets-dir "$SECRETS_DIR" 2>&1 | grep "invalid secret name"
+if [ $? -eq 0 ]; then
+    echo "Path traversal in 'copy' (new-name) failed (expected)"
+else
+    echo "VULNERABILITY CONFIRMED: Path traversal in 'copy' successful!"
+    rm -rf "$SECRETS_DIR"
+    exit 1
+fi
+
+rm -rf "$SECRETS_DIR"
+echo "ALL TRAVERSAL TESTS PASSED"
+exit 0

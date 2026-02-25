@@ -44,6 +44,11 @@ func runSetup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("email is required. Use --email flag or set USER_EMAIL environment variable")
 	}
 
+	// Validate email to prevent path traversal and argument injection
+	if err := validateName(email); err != nil {
+		return err
+	}
+
 	// Load config
 	cfg, err := config.LoadConfig(secretsDir)
 	if err != nil {

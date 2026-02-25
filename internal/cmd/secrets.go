@@ -117,6 +117,11 @@ func runList(cmd *cobra.Command, args []string) error {
 	email := GetUserEmail()
 	vaultName := args[0]
 
+	// Validate vault name to prevent path traversal and argument injection
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
 	}
@@ -166,6 +171,7 @@ func runGet(cmd *cobra.Command, args []string) error {
 	vaultName := args[0]
 	secretName := args[1]
 
+	// Validate names to prevent path traversal and argument injection
 	if err := validateName(vaultName); err != nil {
 		return err
 	}
@@ -273,6 +279,13 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	vaultName := args[0]
 	secretName := args[1]
 
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateSecretName(secretName); err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
 	}
@@ -311,6 +324,17 @@ func runRename(cmd *cobra.Command, args []string) error {
 	oldName := args[1]
 	newName := args[2]
 
+	// Validate names to prevent path traversal and argument injection
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateSecretName(oldName); err != nil {
+		return err
+	}
+	if err := validateSecretName(newName); err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
 	}
@@ -348,6 +372,22 @@ func runCopy(cmd *cobra.Command, args []string) error {
 	srcVault := args[0]
 	secretName := args[1]
 	dstVault := args[2]
+
+	// Validate names to prevent path traversal and argument injection
+	if err := validateName(srcVault); err != nil {
+		return err
+	}
+	if err := validateSecretName(secretName); err != nil {
+		return err
+	}
+	if err := validateName(dstVault); err != nil {
+		return err
+	}
+	if newSecretName != "" {
+		if err := validateSecretName(newSecretName); err != nil {
+			return err
+		}
+	}
 
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
