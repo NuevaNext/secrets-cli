@@ -12,6 +12,8 @@ func TestValidateName(t *testing.T) {
 	}{
 		{"valid name", "dev", false},
 		{"valid email", "alice@example.com", false},
+		{"valid email with subdomains", "bob@mail.dev.example.com", false},
+		{"valid email with plus", "user+label@example.com", false},
 		{"empty name", "", true},
 		{"path traversal", "../test", true},
 		{"slash in name", "dev/prod", true},
