@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -183,6 +184,31 @@ func validateName(name string) error {
 		return fmt.Errorf("invalid name: %s (contains illegal characters or path traversal)", name)
 	}
 	return nil
+}
+
+// Confirm prompts the user for confirmation before performing a destructive action.
+// If force is true, it returns true without prompting.
+// In non-interactive environments, it returns false if not forced.
+func Confirm(message string, force bool) bool {
+	if force {
+		return true
+	}
+
+	// Check if stdin is a terminal
+	stat, err := os.Stdin.Stat()
+	if err != nil || (stat.Mode()&os.ModeCharDevice) == 0 {
+		return false
+	}
+
+	fmt.Printf("%s [y/N] ", message)
+	reader := bufio.NewReader(os.Stdin)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false
+	}
+
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes"
 }
 
 // validateSecretName ensures a secret name is safe to use.
