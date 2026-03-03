@@ -1,0 +1,3 @@
+## 2026-03-03 - Interactive Confirmation UX Pattern
+**Learning:** Destructive CLI commands (vault/secret/key deletion) should provide an interactive [y/N] prompt when run in a terminal to prevent accidental data loss, while still supporting a `--force` flag for non-interactive/automation environments. This balanced approach improves usability without breaking CI/CD pipelines. Using quoted formatting (`%q`) for entity names in prompts makes them clearer.
+**Action:** Always implement the `Confirm` pattern for destructive operations and ensure terminal detection using `os.Stdin.Stat()` and `os.ModeCharDevice`.
