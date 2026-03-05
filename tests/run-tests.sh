@@ -59,7 +59,7 @@ build_image() {
         image_created=$(docker image inspect "$IMAGE_NAME" --format '{{.Created}}' 2>/dev/null || echo "1970-01-01")
         
         local needs_rebuild=false
-        for file in "${PROJECT_DIR}/secret-cli" "${SCRIPT_DIR}/Dockerfile" "${SCRIPT_DIR}/test-utils.sh" "${SCRIPT_DIR}/e2e-tests.sh"; do
+        for file in "${PROJECT_DIR}/secrets-cli" "${SCRIPT_DIR}/Dockerfile" "${SCRIPT_DIR}/test-utils.sh" "${SCRIPT_DIR}/e2e-tests.sh"; do
             if [[ -f "$file" ]] && [[ "$file" -nt "${SCRIPT_DIR}/.image-timestamp" ]]; then
                 needs_rebuild=true
                 break

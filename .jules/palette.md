@@ -1,0 +1,3 @@
+## 2026-03-05 - [Interactive Confirmation Prompts]
+**Learning:** For destructive CLI actions, requiring a `--force` flag is a good baseline, but providing an interactive confirmation prompt when the flag is missing and a terminal is present significantly improves the user experience by offering a safety net without breaking automation. Checking for a terminal environment using `os.Stdin.Stat()` is crucial to prevent the CLI from hanging in non-interactive environments like CI/CD.
+**Action:** Use a centralized `Confirm` helper that respects both `--force` flags and terminal presence for all destructive operations.
