@@ -13,8 +13,8 @@ func TestConfirm(t *testing.T) {
 
 	// Test non-interactive environment
 	// In the test environment, os.Stdin might not be a terminal
-	fileInfo, _ := os.Stdin.Stat()
-	isTerminal := (fileInfo.Mode() & os.ModeCharDevice) != 0
+	fileInfo, err := os.Stdin.Stat()
+	isTerminal := err == nil && (fileInfo.Mode()&os.ModeCharDevice) != 0
 
 	if !isTerminal {
 		if Confirm("test", false) {

@@ -12,8 +12,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE="${WORKSPACE:-/tmp/test-workspace}"
-SECRET_CLI="${SECRET_CLI:-${WORKSPACE}/secrets-cli}"
+WORKSPACE="/workspace"
+SECRET_CLI="${WORKSPACE}/secrets-cli"
 
 # Source test utilities
 source "${SCRIPT_DIR}/test-utils.sh"
@@ -490,6 +490,31 @@ test_key_add_bob() {
     return 0
 }
 
+test_key_remove() {
+    cd "$TEST_DIR"
+
+    # Create a key to remove
+    local charlie_email="charlie@test.local"
+    generate_gpg_key "$charlie_email" "Charlie Test"
+    assert_success "$SECRET_CLI key add $charlie_email" || return 1
+    assert_file_exists ".secrets/keys/${charlie_email}.asc" || return 1
+
+    # Attempt remove without force (should fail in non-interactive environment)
+    assert_failure "$SECRET_CLI key remove $charlie_email" || return 1
+    assert_output_contains "use --force" || return 1
+
+    # Remove with force
+    assert_success "$SECRET_CLI key remove $charlie_email --force" || return 1
+
+    # Verify it's gone
+    if [[ -f ".secrets/keys/${charlie_email}.asc" ]]; then
+        test_fail "key removed" "key file still exists"
+        return 1
+    fi
+
+    return 0
+}
+
 test_key_list_shows_both() {
     cd "$TEST_DIR"
     
@@ -834,6 +859,8 @@ register_tests() {
         "List stored public GPG keys"
     register_test "key_add_bob" test_key_add_bob \
         "Add Bob's public key to .secrets/keys/"
+    register_test "key_remove" test_key_remove \
+        "Remove a GPG key with --force flag"
     register_test "key_list_shows_both" test_key_list_shows_both \
         "Verify both Alice and Bob keys listed"
     

@@ -193,8 +193,8 @@ func Confirm(message string, force bool) bool {
 	}
 
 	// Check if stdin is a terminal
-	fileInfo, _ := os.Stdin.Stat()
-	if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+	fileInfo, err := os.Stdin.Stat()
+	if err != nil || (fileInfo.Mode()&os.ModeCharDevice) == 0 {
 		return false
 	}
 
