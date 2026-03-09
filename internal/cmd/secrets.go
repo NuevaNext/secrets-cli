@@ -273,6 +273,14 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	vaultName := args[0]
 	secretName := args[1]
 
+	// Validate to prevent path traversal and argument injection
+	if err := validateName(vaultName); err != nil {
+		return err
+	}
+	if err := validateSecretName(secretName); err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(secretsDir); os.IsNotExist(err) {
 		return fmt.Errorf("✗ Secrets directory not found: %s. Run 'secrets-cli init' first", secretsDir)
 	}
