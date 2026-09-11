@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: [self-hosted, X64]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
